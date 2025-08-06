@@ -405,7 +405,7 @@ const AdminAssignments = ({ open, onClose }) => {
                     <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
                         Gestión de Asignaciones
                     </Typography>
-                    <Button
+                    {/* <Button
                         variant="contained"
                         color="secondary"
                         startIcon={<Schedule />}
@@ -413,7 +413,7 @@ const AdminAssignments = ({ open, onClose }) => {
                         sx={{ ml: 2 }}
                     >
                         Programadas
-                    </Button>
+                    </Button> */}
                 </Box>
                 <IconButton 
                     onClick={onClose}
