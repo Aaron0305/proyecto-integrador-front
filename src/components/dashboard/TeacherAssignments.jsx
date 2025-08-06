@@ -154,7 +154,24 @@ const TeacherAssignments = () => {
         loadAllTeachersStats();
     };
 
-    const getStatusColor = (status, dueDate, closeDate) => {
+    const getStatusColor = (assignment) => {
+        // Si el admin ha actualizado el estado específico del docente, usar esa información
+        if (assignment.teacherStatus && assignment.teacherStatus.adminUpdated) {
+            const { submissionStatus } = assignment.teacherStatus;
+            switch (submissionStatus) {
+                case 'on-time':
+                    return 'success';  // Verde - Entregado a tiempo
+                case 'late':
+                    return 'warning';  // Naranja - Entregado con retraso
+                case 'closed':
+                    return 'error';    // Rojo - No entregado
+                default:
+                    return 'default';  // Gris/Marrón - Pendiente
+            }
+        }
+        
+        // Lógica original si no hay estado específico del admin
+        const { status, dueDate, closeDate } = assignment;
         if (status === 'completed') return 'success';
         
         const now = new Date();
@@ -171,7 +188,24 @@ const TeacherAssignments = () => {
         return 'primary';
     };
 
-    const getStatusLabel = (status, dueDate, closeDate) => {
+    const getStatusLabel = (assignment) => {
+        // Si el admin ha actualizado el estado específico del docente, usar esa información
+        if (assignment.teacherStatus && assignment.teacherStatus.adminUpdated) {
+            const { submissionStatus } = assignment.teacherStatus;
+            switch (submissionStatus) {
+                case 'on-time':
+                    return 'Entregado';
+                case 'late':
+                    return 'Entregado con Retraso';
+                case 'closed':
+                    return 'No Entregado';
+                default:
+                    return 'Pendiente';
+            }
+        }
+        
+        // Lógica original si no hay estado específico del admin
+        const { status, dueDate, closeDate } = assignment;
         if (status === 'completed') return 'Completado';
         if (status === 'pending') {
             const now = new Date();
@@ -581,7 +615,7 @@ const TeacherAssignments = () => {
                                         hover
                                         sx={{
                                             '&:last-child td, &:last-child th': { border: 0 },
-                                            borderLeft: `4px solid ${theme.palette[getStatusColor(status, assignment.dueDate, assignment.closeDate)].main}`
+                                            borderLeft: `4px solid ${theme.palette[getStatusColor(assignment)].main}`
                                         }}
                                     >
                                         <TableCell>
@@ -599,8 +633,8 @@ const TeacherAssignments = () => {
                                         </TableCell>
                                         <TableCell>
                                             <Chip
-                                                label={getStatusLabel(status, assignment.dueDate, assignment.closeDate)}
-                                                color={getStatusColor(status, assignment.dueDate, assignment.closeDate)}
+                                                label={getStatusLabel(assignment)}
+                                                color={getStatusColor(assignment)}
                                                 size="small"
                                                 sx={{ fontWeight: 'bold' }}
                                             />
@@ -757,8 +791,8 @@ const TeacherAssignments = () => {
                             <Box mb={2}>
                                 <motion.div whileHover={{ scale: 1.05 }}>
                                     <Chip
-                                        label={getStatusLabel(selectedAssignment.status, selectedAssignment.dueDate, selectedAssignment.closeDate)}
-                                        color={getStatusColor(selectedAssignment.status, selectedAssignment.dueDate, selectedAssignment.closeDate)}
+                                        label={getStatusLabel(selectedAssignment)}
+                                        color={getStatusColor(selectedAssignment)}
                                         sx={{ 
                                             fontWeight: 'bold',
                                             textTransform: 'uppercase',
