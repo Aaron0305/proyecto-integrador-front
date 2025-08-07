@@ -88,21 +88,26 @@ const StyledAvatar = styled(Avatar)(({ theme }) => ({
   },
 }));
 
+// Componente principal
 export default function Structure() {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [dialogOpen, setDialogOpen] = useState(false);
-    const [editSession, setEditSession] = useState(null);
-    const [form, setForm] = useState({ nombre: '', encargado: '', inicioServicio: '', finServicio: '', horasAcumuladas: '' });
-    const [selectedStudent, setSelectedStudent] = useState(null);
-    const [drawerOpen, setDrawerOpen] = useState(false);
+
     const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
-    const [fechaSeleccionada, setFechaSeleccionada] = useState(null);
-    const [reporteDrawerOpen, setReporteDrawerOpen] = useState(false);
-    const [refreshing, setRefreshing] = useState(false);
     const [asignationOpen, setAsignationOpen] = useState(false);
     const [adminAssignmentsOpen, setAdminAssignmentsOpen] = useState(false);
+    const [scoreCardOpen, setScoreCardOpen] = useState(false);
+    // Función para abrir Score Card
+    const handleOpenScoreCard = useCallback(() => {
+        setScoreCardOpen(true);
+        setMobileDrawerOpen(false);
+    }, []);
+
+    // Función para cerrar Score Card
+    const handleCloseScoreCard = useCallback(() => {
+        setScoreCardOpen(false);
+    }, []);
     const [teacherStats, setTeacherStats] = useState({});
 
     // Función optimizada para obtener usuarios con cache
@@ -110,7 +115,7 @@ export default function Structure() {
         if (users.length > 0 && !force) return; // Evita recargas innecesarias
         
         try {
-            setRefreshing(true);
+            setLoading(true);
             const response = await fetch('http://localhost:3001/api/users', {
                 headers: {
                     'Cache-Control': force ? 'no-cache' : 'max-age=300', // Cache por 5 minutos
@@ -136,7 +141,6 @@ export default function Structure() {
             setError(err.message);
         } finally {
             setLoading(false);
-            setRefreshing(false);
         }
     }, [users.length]);
 
@@ -194,29 +198,7 @@ export default function Structure() {
         }
     }, []);
 
-    // Función para actualizar estadísticas de un profesor específico
-    const updateTeacherStats = useCallback(async (teacherId) => {
-        try {
-            const response = await fetch(`http://localhost:3001/api/stats/teachers/${teacherId}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    // Incluir token de autenticación si es necesario
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                }
-            });
-            
-            if (!response.ok) {
-                throw new Error('Error al actualizar estadísticas');
-            }
-            
-            // Actualizar las estadísticas localmente
-            await fetchTeacherStats();
-        } catch (error) {
-            console.error('Error:', error);
-            // Manejar el error según sea necesario
-        }
-    }, [fetchTeacherStats]);
+
 
     // Cargar usuarios y estadísticas junto con los usuarios
     useEffect(() => {
@@ -237,65 +219,9 @@ export default function Structure() {
     }, [users]);
 
     // Memoizar los detalles del estudiante
-    const getStudentDetails = useMemo(() => (session) => ({
-        ...session,
-        correo: session.nombre?.toLowerCase().replace(/ /g, '.') + '@tesjo.edu.mx',
-        carrera: session.carrera || 'No especificada',
-        registros: session.registros || []
-    }), []);
-
-    const handleOpenDialog = useCallback((session = null) => {
-        setEditSession(session);
-        setForm(session || { nombre: '', encargado: '', inicioServicio: '', finServicio: '', horasAcumuladas: '' });
-        setDialogOpen(true);
-        setMobileDrawerOpen(false);
-    }, []);
-    
-    const handleCloseDialog = useCallback(() => {
-        setDialogOpen(false);
-        setEditSession(null);
-        setForm({ nombre: '', encargado: '', inicioServicio: '', finServicio: '', horasAcumuladas: '' });
-    }, []);
-    
-    const handleChange = useCallback((e) => {
-        setForm({ ...form, [e.target.name]: e.target.value });
-    }, [form]);
-    
-    const handleSave = useCallback(() => {
-        if (editSession) {
-            setUsers(users.map(s => s.id === editSession.id ? { ...editSession, ...form } : s));
-        } else {
-            setUsers([...users, { ...form, id: Date.now() }]);
-        }
-        handleCloseDialog();
-    }, [editSession, form, users, handleCloseDialog]);
-    
-    const handleDelete = useCallback((id) => {
-        setUsers(users.filter(s => s.id !== id));
-    }, [users]);
-
-    const handleSelectStudent = useCallback((user) => {
-        setSelectedStudent(getStudentDetails(user));
-        setDrawerOpen(true);
-    }, [getStudentDetails]);
-    
-    const handleCloseDrawer = useCallback(() => {
-        setDrawerOpen(false);
-        setSelectedStudent(null);
-    }, []);
-
-    const handleOpenReporteHoras = useCallback(() => {
-        setReporteDrawerOpen(true);
-        setMobileDrawerOpen(false);
-    }, []);
-
-    const handleCloseReporteHoras = useCallback(() => {
-        setReporteDrawerOpen(false);
-    }, []);
-
     // Función para refrescar datos
     const handleRefresh = useCallback(async () => {
-        setRefreshing(true);
+        setLoading(true);
         try {
             await Promise.all([
                 fetchUsers(true),
@@ -304,7 +230,7 @@ export default function Structure() {
         } catch (error) {
             console.error('Error al refrescar datos:', error);
         } finally {
-            setRefreshing(false);
+            setLoading(false);
         }
     }, [fetchUsers, fetchTeacherStats]);
 
@@ -375,6 +301,70 @@ export default function Structure() {
             </>
         );
     }, [teacherStats]);
+
+    const renderScoreCard = useCallback(() => {
+        return (
+            <Dialog open={scoreCardOpen} onClose={handleCloseScoreCard} maxWidth="lg" fullWidth>
+                <DialogTitle sx={{ background: 'linear-gradient(135deg, #ff9800 0%, #ffc107 100%)', color: 'white', fontWeight: 'bold' }}>
+                    Score Card de Docentes
+                </DialogTitle>
+                <DialogContent>
+                    <TableContainer>
+                        <Table>
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell>Docente</TableCell>
+                                    <TableCell align="center">Total</TableCell>
+                                    <TableCell align="center">Pendientes</TableCell>
+                                    <TableCell align="center">Completadas</TableCell>
+                                    <TableCell align="center">No Entregado</TableCell>
+                                    <TableCell align="center">Vencidas</TableCell>
+                                    <TableCell align="center">Entregadas con Retraso</TableCell>
+                                    <TableCell align="center">% Cumplimiento</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {users.map((user) => {
+                                    const stats = teacherStats[user.numeroControl] || {
+                                        total: 0,
+                                        pending: 0,
+                                        completed: 0,
+                                        notDelivered: 0,
+                                        overdue: 0,
+                                        completedLate: 0
+                                    };
+                                    // Calcular porcentaje de cumplimiento correcto
+                                    const correct = stats.completed || 0;
+                                    const total = stats.total || 0;
+                                    const percent = total > 0 ? Math.round((correct / total) * 100) : 0;
+                                    return (
+                                        <TableRow key={user._id}>
+                                            <TableCell>{`${user.nombre} ${user.apellidoPaterno} ${user.apellidoMaterno}`}</TableCell>
+                                            <TableCell align="center">{stats.total}</TableCell>
+                                            <TableCell align="center">{stats.pending}</TableCell>
+                                            <TableCell align="center">{stats.completed}</TableCell>
+                                            <TableCell align="center">{stats.notDelivered || 0}</TableCell>
+                                            <TableCell align="center">{stats.overdue || 0}</TableCell>
+                                            <TableCell align="center">{stats.completedLate || 0}</TableCell>
+                                            <TableCell align="center">{percent}%</TableCell>
+                                        </TableRow>
+                                    );
+                                })}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                    <Box sx={{ mt: 2 }}>
+                        <Typography variant="body2" color="text.secondary">
+                            El porcentaje de cumplimiento corresponde a las asignaciones entregadas correctamente sobre el total asignado.
+                        </Typography>
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseScoreCard} variant="outlined">Cerrar</Button>
+                </DialogActions>
+            </Dialog>
+        );
+    }, [users, teacherStats, scoreCardOpen, handleCloseScoreCard]);
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: '#f8fafc' }}>
@@ -594,23 +584,43 @@ export default function Structure() {
                     <Typography variant="subtitle2" sx={{ mb: 1, mt: 1, fontWeight: 'bold', color: '#4fc3f7' }}>
                         GESTIÓN DE DOCENTES
                     </Typography>
-                    <Button
-                        startIcon={<Assignment />}
-                        fullWidth
-                        variant="contained"
-                        sx={{
-                            justifyContent: 'flex-start',
-                            mb: 1.5,
-                            py: 1.2,
-                            background: 'linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)',
-                            '&:hover': {
-                                background: 'linear-gradient(45deg, #1565c0 30%, #1976d2 90%)',
-                            },
-                        }}
-                        onClick={handleOpenAsignation}
-                    >
-                        Nueva Asignación
-                    </Button>
+
+            <Button
+                startIcon={<Assignment />}
+                fullWidth
+                variant="contained"
+                sx={{
+                    justifyContent: 'flex-start',
+                    mb: 1.5,
+                    py: 1.2,
+                    background: 'linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)',
+                    '&:hover': {
+                        background: 'linear-gradient(45deg, #1565c0 30%, #1976d2 90%)',
+                    },
+                }}
+                onClick={handleOpenAsignation}
+            >
+                Nueva Asignación
+            </Button>
+
+            {/* Botón Score Card */}
+            <Button
+                startIcon={<Assessment />}
+                fullWidth
+                variant="contained"
+                sx={{
+                    justifyContent: 'flex-start',
+                    mb: 1.5,
+                    py: 1.2,
+                    background: 'linear-gradient(45deg, #ff9800 30%, #ffc107 90%)',
+                    '&:hover': {
+                        background: 'linear-gradient(45deg, #ffa726 30%, #ff9800 90%)',
+                    },
+                }}
+                onClick={handleOpenScoreCard}
+            >
+                Score Card
+            </Button>
 
                     {/* Gestión de Asignaciones */}
                     <Typography variant="subtitle2" sx={{ mb: 1, mt: 2, fontWeight: 'bold', color: '#4fc3f7' }}>
@@ -637,101 +647,6 @@ export default function Structure() {
                 </Box>
             </Drawer>
 
-            {/* Dialog para editar/agregar */}
-            <Dialog 
-                open={dialogOpen} 
-                onClose={handleCloseDialog}
-                maxWidth="md"
-                fullWidth
-                sx={{
-                    '& .MuiDialog-paper': {
-                        borderRadius: '16px',
-                        background: 'linear-gradient(145deg, #ffffff 0%, #f5f7fa 100%)',
-                    },
-                }}
-            >
-                <DialogTitle sx={{ 
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    color: 'white',
-                    fontWeight: 'bold',
-                }}>
-                    {editSession ? 'Editar Docente' : 'Agregar Nuevo Docente'}
-                </DialogTitle>
-                <DialogContent sx={{ pt: 3 }}>
-                    <Grid container spacing={3}>
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                name="nombre"
-                                label="Nombre"
-                                value={form.nombre}
-                                onChange={handleChange}
-                                fullWidth
-                                required
-                                sx={{ mb: 2 }}
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                name="numeroControl"
-                                label="Número de Control"
-                                value={form.numeroControl}
-                                onChange={handleChange}
-                                fullWidth
-                                required
-                                sx={{ mb: 2 }}
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                name="email"
-                                label="Email"
-                                type="email"
-                                value={form.email}
-                                onChange={handleChange}
-                                fullWidth
-                                required
-                                sx={{ mb: 2 }}
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                name="carrera"
-                                label="Carrera"
-                                value={form.carrera}
-                                onChange={handleChange}
-                                fullWidth
-                                required
-                                sx={{ mb: 2 }}
-                            />
-                        </Grid>
-                    </Grid>
-                </DialogContent>
-                <DialogActions sx={{ p: 3 }}>
-                    <Button 
-                        onClick={handleCloseDialog}
-                        variant="outlined"
-                        sx={{ 
-                            borderRadius: '12px',
-                            color: 'text.secondary',
-                            borderColor: 'rgba(0, 0, 0, 0.12)',
-                            '&:hover': {
-                                borderColor: 'rgba(0, 0, 0, 0.24)',
-                                backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                            },
-                        }}
-                    >
-                        Cancelar
-                    </Button>
-                    <GlowButton
-                        onClick={handleSave}
-                        variant="contained"
-                        sx={{ ml: 2 }}
-                    >
-                        {editSession ? 'Guardar Cambios' : 'Crear Docente'}
-                    </GlowButton>
-                </DialogActions>
-            </Dialog>
-
             {/* Diálogo de Asignaciones */}
             <Asignation
                 open={asignationOpen}
@@ -746,6 +661,9 @@ export default function Structure() {
                     onClose={handleCloseAdminAssignments}
                 />
             </AdminErrorBoundary>
+
+            {/* Score Card de Docentes */}
+            {renderScoreCard()}
         </Box>
     );
 }

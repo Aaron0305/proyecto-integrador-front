@@ -395,33 +395,33 @@ const TeacherAssignments = () => {
             {stats && (
                 <Grid container spacing={2} sx={{ mb: 3 }}>
                     {[
-                        { 
-                            icon: <AssignmentIcon sx={{ fontSize: 40 }} />, 
-                            value: stats.total, 
+                        {
+                            icon: <AssignmentIcon sx={{ fontSize: 40 }} />,
+                            value: stats.total,
                             label: 'Total',
                             color: 'primary',
                             filterValue: 'all'
                         },
-                        { 
-                            icon: <Schedule sx={{ fontSize: 40 }} />, 
-                            value: stats.pending, 
+                        {
+                            icon: <Schedule sx={{ fontSize: 40 }} />,
+                            value: stats.pending,
                             label: 'Pendiente',
                             color: 'warning',
                             filterValue: 'pending'
                         },
-                        { 
-                            icon: <CheckCircle sx={{ fontSize: 40 }} />, 
-                            value: stats.completed, 
+                        {
+                            icon: <CheckCircle sx={{ fontSize: 40 }} />,
+                            value: stats.completed,
                             label: 'Completado',
                             color: 'success',
                             filterValue: 'completed'
                         },
-                        { 
-                            icon: <Warning sx={{ fontSize: 40 }} />, 
-                            value: stats.overdue, 
-                            label: 'Vencido',
+                        {
+                            icon: <Warning sx={{ fontSize: 40 }} />,
+                            value: stats.overdue,
+                            label: 'No Entregado',
                             color: 'error',
-                            filterValue: 'vencido'
+                            filterValue: 'not-delivered'
                         }
                     ].map((stat, index) => (
                         <Grid item xs={6} sm={3} key={index}>
@@ -606,8 +606,8 @@ const TeacherAssignments = () => {
                         </TableHead>
                         <TableBody>
                             {assignments.map((assignment) => {
-                                const isOverdue = assignment.status === 'pending' && new Date(assignment.dueDate) < new Date();
-                                const status = isOverdue ? 'vencido' : assignment.status;
+                                const isNotDelivered = assignment.status === 'not-delivered' || (assignment.status === 'pending' && new Date(assignment.dueDate) < new Date());
+                                const status = isNotDelivered ? 'not-delivered' : assignment.status;
                                 
                                 return (
                                     <TableRow 

@@ -55,7 +55,6 @@ import { useTheme } from '@mui/material/styles';
 import { 
     getAdminAllAssignments, 
     markAssignmentCompletedByAdmin,
-    getAdminAssignmentStats,
     updateAssignmentByAdmin,
     getTeachersStatusForAssignment,
     updateTeacherStatusInAssignment
@@ -99,20 +98,38 @@ const AdminAssignments = ({ open, onClose }) => {
     const [actionLoading, setActionLoading] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
+    // Usar la misma API de estadísticas que Structure.jsx
     const loadStats = useCallback(async () => {
         try {
-            console.log('🔍 Loading stats...');
-            const response = await getAdminAssignmentStats();
-            console.log('📊 Stats response:', response);
-            if (response && response.success) {
-                setStats(response.data);
-                console.log('✅ Stats loaded:', response.data);
-            } else {
-                console.error('❌ Stats response invalid:', response);
-            }
+            const token = localStorage.getItem('token');
+            if (!token) throw new Error('No hay token de autenticación');
+            const response = await fetch('http://localhost:3001/api/stats/teachers', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            const responseData = await response.text();
+            if (!response.ok) throw new Error(`Error ${response.status}: ${responseData}`);
+            const data = JSON.parse(responseData);
+            if (!Array.isArray(data)) throw new Error('Los datos recibidos no son un array');
+            // Procesar igual que Structure.jsx
+            const statsMap = {};
+            data.forEach(stat => {
+                if (stat && stat.teacherId) {
+                    statsMap[stat.teacherId] = {
+                        teacherName: stat.teacherName,
+                        email: stat.email,
+                        total: stat.total || 0,
+                        completed: stat.completed || 0,
+                        pending: stat.pending || 0,
+                        overdue: stat.overdue || 0
+                    };
+                }
+            });
+            setStats(statsMap);
         } catch (error) {
-            console.error('❌ Error loading admin stats:', error);
-            console.error('❌ Stats error details:', error.response || error.message);
+            console.error('❌ Error loading teacher stats:', error);
         }
     }, []);
 
@@ -130,13 +147,13 @@ const AdminAssignments = ({ open, onClose }) => {
             });
             
             const params = {
-                status: statusFilter,
-                search: searchTerm,
-                sort: sortBy,
-                page: page,
-                limit: 10,
-                ...(teacherFilter !== 'all' && { teacherId: teacherFilter })
-            };
+        status: statusFilter === 'not-delivered' ? 'not-delivered' : statusFilter,
+        search: searchTerm,
+        sort: sortBy,
+        page: page,
+        limit: 10,
+        ...(teacherFilter !== 'all' && { teacherId: teacherFilter })
+    };
 
             console.log('📤 Calling getAdminAllAssignments with params:', params);
             const response = await getAdminAllAssignments(params);
@@ -332,6 +349,7 @@ const AdminAssignments = ({ open, onClose }) => {
             case 'completed-late':
                 return 'Entregado con Retraso';
             case 'not-delivered':
+            case 'overdue':
                 return 'No Entregado';
             case 'pending':
                 return 'Pendiente';
@@ -459,7 +477,7 @@ const AdminAssignments = ({ open, onClose }) => {
                             { 
                                 icon: <Close sx={{ fontSize: 32 }} />, 
                                 value: stats.overview['not-delivered'] || 0, 
-                                label: 'No Entregadas',
+                        label: 'No Entregado',
                                 color: 'error',
                                 filterValue: 'not-delivered'
                             }

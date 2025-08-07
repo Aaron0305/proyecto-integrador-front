@@ -394,90 +394,165 @@ const AdminAssignments = ({ open, onClose }) => {
             </DialogTitle>
 
             <DialogContent sx={{ p: 3 }}>
-                {/* Estadísticas generales */}
-                {stats && stats.overview && (
-                    <Grid container spacing={2} sx={{ mb: 3 }}>
-                        {[
-                            { 
-                                icon: <AssignmentIcon sx={{ fontSize: 32 }} />, 
-                                value: stats.overview.total, 
-                                label: 'Total',
-                                color: 'primary',
-                                filterValue: 'all'
-                            },
-                            { 
-                                icon: <Schedule sx={{ fontSize: 32 }} />, 
-                                value: stats.overview.pending, 
-                                label: 'Pendientes',
-                                color: 'warning',
-                                filterValue: 'pending'
-                            },
-                            { 
-                                icon: <CheckCircle sx={{ fontSize: 32 }} />, 
-                                value: stats.overview.completed, 
-                                label: 'Completadas',
-                                color: 'success',
-                                filterValue: 'completed'
-                            },
-                            { 
-                                icon: <Warning sx={{ fontSize: 32 }} />, 
-                                value: stats.overview.overdue, 
-                                label: 'Vencidas',
-                                color: 'error',
-                                filterValue: 'overdue'
-                            }
-                        ].map((stat, index) => (
-                            <Grid item xs={6} sm={3} key={index}>
-                                <motion.div
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: index * 0.1, duration: 0.5 }}
-                                    whileHover={{ y: -5 }}
-                                >
-                                    <Card 
-                                        onClick={() => {
-                                            setStatusFilter(stat.filterValue);
-                                            setPage(1);
-                                        }}
-                                        sx={{ 
-                                            height: '100%', 
-                                            borderRadius: 2,
-                                            boxShadow: theme.shadows[3],
-                                            cursor: 'pointer',
-                                            transition: 'all 0.3s ease',
-                                            border: statusFilter === stat.filterValue ? `2px solid ${theme.palette[stat.color].main}` : 'none',
-                                            '&:hover': {
-                                                boxShadow: theme.shadows[6],
-                                                transform: 'translateY(-2px)'
-                                            }
-                                        }}
-                                    >
-                                        <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                                            <AnimatedBadge 
-                                                badgeContent={stat.value} 
-                                                color={stat.color} 
-                                                max={999}
-                                            >
-                                                {React.cloneElement(stat.icon, { 
-                                                    color: stat.color,
-                                                    sx: { fontSize: 32 }
-                                                })}
-                                            </AnimatedBadge>
-                                            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                                                {stat.label}
-                                            </Typography>
-                                        </CardContent>
-                                    </Card>
-                                </motion.div>
-                            </Grid>
-                        ))}
+                {/* Estadísticas con botones interactivos grandes */}
+                <Grid container spacing={3} sx={{ mb: 4 }}>
+                    <Grid item xs={12} md={3}>
+                        <motion.div
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                        >
+                            <Paper
+                                onClick={() => {
+                                    setStatusFilter('all');
+                                    handleRefresh();
+                                }}
+                                sx={{
+                                    p: 3,
+                                    cursor: 'pointer',
+                                    background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
+                                    color: 'white',
+                                    borderRadius: 4,
+                                    minHeight: 160,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    position: 'relative',
+                                    overflow: 'hidden',
+                                    boxShadow: theme.shadows[5],
+                                    '&:hover': {
+                                        boxShadow: theme.shadows[15]
+                                    }
+                                }}
+                            >
+                                <AssignmentIcon sx={{ fontSize: 40, mb: 2 }} />
+                                <Typography variant="h3" sx={{ mb: 1, fontWeight: 'bold' }}>
+                                    {stats?.overview?.total || 0}
+                                </Typography>
+                                <Typography variant="h6">Total Asignaciones</Typography>
+                            </Paper>
+                        </motion.div>
                     </Grid>
-                )}
 
-                {/* Controles de filtros */}
+                    <Grid item xs={12} md={3}>
+                        <motion.div
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                        >
+                            <Paper
+                                onClick={() => {
+                                    setStatusFilter('completed');
+                                    handleRefresh();
+                                }}
+                                sx={{
+                                    p: 3,
+                                    cursor: 'pointer',
+                                    background: `linear-gradient(45deg, ${theme.palette.success.main}, ${theme.palette.success.dark})`,
+                                    color: 'white',
+                                    borderRadius: 4,
+                                    minHeight: 160,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    position: 'relative',
+                                    overflow: 'hidden',
+                                    boxShadow: theme.shadows[5],
+                                    '&:hover': {
+                                        boxShadow: theme.shadows[15]
+                                    }
+                                }}
+                            >
+                                <CheckCircle sx={{ fontSize: 40, mb: 2 }} />
+                                <Typography variant="h3" sx={{ mb: 1, fontWeight: 'bold' }}>
+                                    {stats?.overview?.completed || 0}
+                                </Typography>
+                                <Typography variant="h6">Completadas</Typography>
+                            </Paper>
+                        </motion.div>
+                    </Grid>
+
+                    <Grid item xs={12} md={3}>
+                        <motion.div
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                        >
+                            <Paper
+                                onClick={() => {
+                                    setStatusFilter('pending');
+                                    handleRefresh();
+                                }}
+                                sx={{
+                                    p: 3,
+                                    cursor: 'pointer',
+                                    background: `linear-gradient(45deg, ${theme.palette.warning.main}, ${theme.palette.warning.dark})`,
+                                    color: 'white',
+                                    borderRadius: 4,
+                                    minHeight: 160,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    position: 'relative',
+                                    overflow: 'hidden',
+                                    boxShadow: theme.shadows[5],
+                                    '&:hover': {
+                                        boxShadow: theme.shadows[15]
+                                    }
+                                }}
+                            >
+                                <Schedule sx={{ fontSize: 40, mb: 2 }} />
+                                <Typography variant="h3" sx={{ mb: 1, fontWeight: 'bold' }}>
+                                    {stats?.overview?.pending || 0}
+                                </Typography>
+                                <Typography variant="h6">Pendientes</Typography>
+                            </Paper>
+                        </motion.div>
+                    </Grid>
+
+                    <Grid item xs={12} md={3}>
+                        <motion.div
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                        >
+                            <Paper
+                                onClick={() => {
+                                    setStatusFilter('overdue');
+                                    handleRefresh();
+                                }}
+                                sx={{
+                                    p: 3,
+                                    cursor: 'pointer',
+                                    background: `linear-gradient(45deg, ${theme.palette.error.main}, ${theme.palette.error.dark})`,
+                                    color: 'white',
+                                    borderRadius: 4,
+                                    minHeight: 160,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    position: 'relative',
+                                    overflow: 'hidden',
+                                    boxShadow: theme.shadows[5],
+                                    '&:hover': {
+                                        boxShadow: theme.shadows[15]
+                                    }
+                                }}
+                            >
+                                <Warning sx={{ fontSize: 40, mb: 2 }} />
+                                <Typography variant="h3" sx={{ mb: 1, fontWeight: 'bold' }}>
+                                    {stats?.overview?.overdue || 0}
+                                </Typography>
+                                <Typography variant="h6">Vencidas</Typography>
+                            </Paper>
+                        </motion.div>
+                    </Grid>
+                </Grid>
+
+                {/* Resto de los controles de filtro */}
                 <Paper sx={{ p: 2, mb: 3, borderRadius: 2 }}>
                     <Grid container spacing={2} alignItems="center">
-                        <Grid item xs={12} md={3}>
+                        <Grid item xs={12} md={4}>
                             <TextField
                                 fullWidth
                                 size="small"
@@ -493,22 +568,7 @@ const AdminAssignments = ({ open, onClose }) => {
                                 }}
                             />
                         </Grid>
-                        <Grid item xs={12} md={2}>
-                            <FormControl fullWidth size="small">
-                                <InputLabel>Estado</InputLabel>
-                                <Select
-                                    value={statusFilter}
-                                    label="Estado"
-                                    onChange={(e) => setStatusFilter(e.target.value)}
-                                >
-                                    <MenuItem value="all">Todos</MenuItem>
-                                    <MenuItem value="pending">Pendientes</MenuItem>
-                                    <MenuItem value="completed">Completadas</MenuItem>
-                                    <MenuItem value="overdue">Vencidas</MenuItem>
-                                </Select>
-                            </FormControl>
-                        </Grid>
-                        <Grid item xs={12} md={2}>
+                        <Grid item xs={12} md={3}>
                             <FormControl fullWidth size="small">
                                 <InputLabel>Ordenar por</InputLabel>
                                 <Select
@@ -532,11 +592,6 @@ const AdminAssignments = ({ open, onClose }) => {
                                     value={teacherFilter}
                                     onChange={(e) => setTeacherFilter(e.target.value)}
                                     label="Docente"
-                                    startAdornment={
-                                        <InputAdornment position="start">
-                                            <Person color="action" />
-                                        </InputAdornment>
-                                    }
                                 >
                                     <MenuItem value="all">Todos los docentes</MenuItem>
                                     {teachers.map((teacher) => (
@@ -1234,5 +1289,4 @@ const AdminAssignments = ({ open, onClose }) => {
         </Dialog>
     );
 };
-
 export default AdminAssignments;
