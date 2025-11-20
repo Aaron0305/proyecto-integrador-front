@@ -64,6 +64,7 @@ import {
 } from '../../services/assignmentService';
 import EditAssignment from './EditAssignment';
 import ScheduledAssignments from './ScheduledAssignmentsSimple';
+import { getAssetUrl } from '../../config/api';
 
 // Custom animated components
 const AnimatedBadge = motion(Badge);
@@ -982,7 +983,7 @@ const AdminAssignments = ({ open, onClose }) => {
                                                         <Chip
                                                             icon={<FileDownload />}
                                                             label={file.fileName}
-                                                            onClick={() => window.open(`http://localhost:3001/${file.fileUrl}`, '_blank')}
+                                                            onClick={() => window.open(getAssetUrl(file.fileUrl), '_blank')}
                                                             sx={{ 
                                                                 mr: 1, 
                                                                 mb: 1,

@@ -1,6 +1,7 @@
 import axios from 'axios';
+import API_CONFIG from '../config/api';
 
-const API_URL = 'http://localhost:3001/api';
+const API_URL = API_CONFIG.baseURL;
 
 export const getSummary = async (userId) => {
   try {

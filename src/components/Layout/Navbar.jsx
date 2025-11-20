@@ -23,6 +23,7 @@ import AdminAccessDialog from '../Admin/AdminAccessDialog';
 import { io } from 'socket.io-client';
 import useSound from 'use-sound';
 import notificationSound from '../../assets/notification.mp3';
+import { API_ENV } from '../../config/api';
 
 import { styled } from '@mui/material/styles';
 
@@ -117,7 +118,7 @@ export default function Navbar() {
   useEffect(() => {
     if (!currentUser) return;
 
-    const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:3001');
+    const socket = io(API_ENV.SOCKET_URL);
     socket.emit('authenticate', currentUser._id);
 
     socket.on('notification', (notification) => {
@@ -127,7 +128,7 @@ export default function Navbar() {
     });
 
     return () => socket.disconnect();
-  }, [currentUser]);
+  }, [currentUser, playNotification]);
   
   const handleMenu = (event) => {
     setAnchorEl(event.currentTarget);

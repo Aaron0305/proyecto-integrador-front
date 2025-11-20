@@ -6,6 +6,7 @@ import { io } from 'socket.io-client';
 import useSound from 'use-sound';
 import { AuthContext } from '../../contexts/AuthContext';
 import notificationSound from '../../assets/notification.mp3';
+import { API_ENV } from '../../config/api';
 
 const Notification = () => {
     const { user } = useContext(AuthContext);
@@ -19,7 +20,7 @@ const Notification = () => {
         if (!user) return;
 
         // Conectar al servidor de Socket.IO
-        const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:3001');
+        const socket = io(API_ENV.SOCKET_URL);
 
         // Autenticar el socket con el ID del usuario
         socket.emit('authenticate', user._id);
@@ -34,7 +35,7 @@ const Notification = () => {
         return () => {
             socket.disconnect();
         };
-    }, [user]);
+    }, [user, playNotification]);
 
     const handleClick = (event) => {
         setAnchorEl(event.currentTarget);

@@ -42,6 +42,7 @@ import {
   Save
 } from '@mui/icons-material';
 import { theme } from '../../theme/palette';
+import API_CONFIG, { API_ENDPOINTS, buildApiUrl } from '../../config/api';
 
 // Componente de campo de entrada animado
 const AnimatedTextField = ({ label, type, value, onChange, icon, endAdornment, select, children, ...props }) => {
@@ -128,7 +129,9 @@ export default function Register() {
     const fetchCarreras = async () => {
       setIsLoadingCarreras(true);
       try {
-        const response = await fetch('http://localhost:3001/api/carreras');
+        const response = await fetch(buildApiUrl(API_ENDPOINTS.CARRERAS), {
+          credentials: API_CONFIG.withCredentials ? 'include' : 'same-origin',
+        });
         if (!response.ok) {
           throw new Error('Error al cargar carreras');
         }
@@ -402,14 +405,14 @@ export default function Register() {
             >
               {isLoadingCarreras ? (
                 <MenuItem disabled>Cargando carreras...</MenuItem>
+              ) : carreras.length > 0 ? (
+                carreras.map((carrera) => (
+                  <MenuItem key={carrera._id} value={carrera._id}>
+                    {carrera.nombre}
+                  </MenuItem>
+                ))
               ) : (
-                carreras
-                  .filter(carrera => carrera.nombre.toLowerCase().includes('sistemas'))
-                  .map((carrera) => (
-                    <MenuItem key={carrera._id} value={carrera._id}>
-                      {carrera.nombre}
-                    </MenuItem>
-                  ))
+                <MenuItem disabled>No hay carreras disponibles</MenuItem>
               )}
             </AnimatedTextField>
 

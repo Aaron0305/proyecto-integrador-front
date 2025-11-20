@@ -25,6 +25,7 @@ import {
   ArrowBack,
   Fingerprint
 } from '@mui/icons-material';
+import { getAssetUrl } from '../../config/api';
 
 const TabPanel = ({ children, value, index, ...other }) => (
   <div
@@ -86,7 +87,7 @@ const ProfileSettings = () => {
             <Box sx={{ textAlign: 'center', mb: 3 }}>
               <Avatar
                 src={currentUser?.fotoPerfil 
-                  ? `http://localhost:3001/uploads/perfiles/${currentUser.fotoPerfil}?t=${Date.now()}`
+                  ? getAssetUrl(`uploads/perfiles/${currentUser.fotoPerfil}?t=${Date.now()}`)
                   : undefined
                 }
                 sx={{

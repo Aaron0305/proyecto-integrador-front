@@ -2,6 +2,15 @@ import React, { createContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import setupAxiosInterceptors from '../utils/axiosDebugger';
 import WebAuthnService from '../services/webauthnService';
+import API_CONFIG, { API_ENDPOINTS } from '../config/api';
+
+axios.defaults.baseURL = API_CONFIG.baseURL;
+axios.defaults.withCredentials = API_CONFIG.withCredentials;
+axios.defaults.timeout = API_CONFIG.timeout;
+axios.defaults.headers.common = {
+  ...(axios.defaults.headers.common || {}),
+  ...API_CONFIG.headers,
+};
 
 export const AuthContext = createContext();
 
@@ -17,7 +26,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post('http://localhost:3001/api/auth/login', {
+      const response = await axios.post(API_ENDPOINTS.LOGIN, {
         email,
         password
       });
@@ -39,7 +48,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
-      const response = await axios.post('http://localhost:3001/api/auth/register', userData, {
+      const response = await axios.post(API_ENDPOINTS.REGISTER, userData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         }
@@ -85,7 +94,7 @@ export const AuthProvider = ({ children }) => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos timeout
 
-      const response = await axios.get('http://localhost:3001/api/auth/verify', {
+      const response = await axios.get(API_ENDPOINTS.VERIFY_TOKEN, {
         headers: { Authorization: `Bearer ${token}` },
         signal: controller.signal
       });
@@ -133,7 +142,7 @@ export const AuthProvider = ({ children }) => {
 
   const forgotPassword = async (email) => {
     try {
-      const response = await axios.post('http://localhost:3001/api/auth/forgot-password', {
+      const response = await axios.post(API_ENDPOINTS.FORGOT_PASSWORD, {
         email
       });
       
@@ -148,7 +157,7 @@ export const AuthProvider = ({ children }) => {
 
   const resetPassword = async (token, newPassword) => {
     try {
-      const response = await axios.post('http://localhost:3001/api/auth/reset-password', {
+      const response = await axios.post(API_ENDPOINTS.RESET_PASSWORD, {
         token,
         newPassword
       });

@@ -2,8 +2,9 @@ import axios from 'axios';
 import { 
   browserSupportsWebAuthn 
 } from '@simplewebauthn/browser';
+import API_CONFIG from '../config/api';
 
-const API_BASE = 'http://localhost:3001/api';
+const API_BASE = API_CONFIG.baseURL;
 
 export class WebAuthnService {
   

@@ -6,6 +6,7 @@ import { styled, keyframes } from '@mui/material/styles';
 import Asignation from './Asignation';
 import AdminAssignments from './AdminAssignmentsFixed';
 import AdminErrorBoundary from './AdminErrorBoundary';
+import API_CONFIG, { buildApiUrl, getAssetUrl } from '../../config/api';
 
 // Animaciones personalizadas
 const pulse = keyframes`
@@ -116,11 +117,12 @@ export default function Structure() {
         
         try {
             setLoading(true);
-            const response = await fetch('http://localhost:3001/api/users', {
+            const response = await fetch(buildApiUrl('/users'), {
                 headers: {
                     'Cache-Control': force ? 'no-cache' : 'max-age=300', // Cache por 5 minutos
                     'Pragma': force ? 'no-cache' : 'cache'
-                }
+                },
+                credentials: API_CONFIG.withCredentials ? 'include' : 'same-origin',
             });
             
             if (!response.ok) {
@@ -154,11 +156,12 @@ export default function Structure() {
             }
             
             console.log('Realizando petición a la API de estadísticas');
-            const response = await fetch('http://localhost:3001/api/stats/teachers', {
+            const response = await fetch(buildApiUrl('/stats/teachers'), {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
-                }
+                },
+                credentials: API_CONFIG.withCredentials ? 'include' : 'same-origin',
             });
 
             console.log('Respuesta de la API:', response.status);
@@ -507,14 +510,14 @@ export default function Structure() {
                                                         <TableCell>
                                                             <StyledAvatar
                                                                 src={user.fotoPerfil 
-                                                                    ? `http://localhost:3001/uploads/perfiles/${user.fotoPerfil}?t=${Date.now()}`
-                                                                    : 'http://localhost:3001/uploads/perfiles/2138822222222_1749571359362.png'
+                                                                    ? getAssetUrl(`uploads/perfiles/${user.fotoPerfil}?t=${Date.now()}`)
+                                                                    : getAssetUrl('uploads/perfiles/2138822222222_1749571359362.png')
                                                                 }
                                                                 alt={`Foto de perfil de ${user.nombreCompleto}`}
                                                                 onError={(e) => {
                                                                     if (!e.target.src.includes('2138822222222_1749571359362.png')) {
                                                                         e.target.onerror = null;
-                                                                        e.target.src = `http://localhost:3001/uploads/perfiles/2138822222222_1749571359362.png?t=${Date.now()}`;
+                                                                        e.target.src = getAssetUrl(`uploads/perfiles/2138822222222_1749571359362.png?t=${Date.now()}`);
                                                                     }
                                                                 }}
                                                             />

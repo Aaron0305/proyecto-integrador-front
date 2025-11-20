@@ -34,6 +34,7 @@ import {
   AccountCircle
 } from '@mui/icons-material';
 import { styled, keyframes } from '@mui/material/styles';
+import { getAssetUrl } from '../../config/api';
 
 // Animaciones avanzadas
 const gradientShift = keyframes`
@@ -393,6 +394,11 @@ const ActiveSession = () => {
     }
   ];
 
+  const profileImageSrc =
+    currentUser?.fotoPerfil && currentUser.fotoPerfil !== ''
+      ? getAssetUrl(`uploads/perfiles/${currentUser.fotoPerfil}?t=${Date.now()}`)
+      : getAssetUrl('uploads/perfiles/2138822222222_1749571359362.png');
+
   return (
     <ResponsiveContainer>
       <Fade in={showContent} timeout={800}>
@@ -470,10 +476,7 @@ const ActiveSession = () => {
                   >
                     <Box>
                       <ResponsiveAvatar
-                        src={currentUser?.fotoPerfil && currentUser.fotoPerfil !== ''
-                          ? `http://localhost:3001/uploads/perfiles/${currentUser.fotoPerfil}?t=${Date.now()}`
-                          : 'http://localhost:3001/uploads/perfiles/2138822222222_1749571359362.png'
-                        }
+                        src={profileImageSrc}
                         alt={`Foto de perfil de ${currentUser?.nombre || 'Usuario'}`}
                         sx={{ 
                           background: 'linear-gradient(135deg, #667eea, #764ba2)',

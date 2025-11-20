@@ -49,6 +49,7 @@ import { DatePicker, TimePicker, LocalizationProvider } from '@mui/x-date-picker
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { es } from 'date-fns/locale';
 import { motion } from 'framer-motion';
+import API_CONFIG, { API_ENV, buildApiUrl } from '../../config/api';
 
 const StyledDialog = styled(Dialog)(({ theme }) => ({
     '& .MuiDialog-paper': {
@@ -92,6 +93,7 @@ const AnimatedButton = motion(Button);
 
 export default function Asignation({ open, onClose, users = [] }) {
     const { verifyToken } = useContext(AuthContext) || {};
+    const backendOrigin = API_ENV.BASE_ORIGIN;
     
     const [form, setForm] = useState({
         title: '',
@@ -267,11 +269,12 @@ export default function Asignation({ open, onClose, users = [] }) {
             }
 
             // Verificar que el token sea válido
-            console.log('� Verificando estado de autenticación...');
-            const authCheckResponse = await fetch('http://localhost:3001/api/assignments/auth-status', {
+            console.log('🛡️ Verificando estado de autenticación...');
+            const authCheckResponse = await fetch(buildApiUrl('/assignments/auth-status'), {
                 headers: {
                     'Authorization': `Bearer ${token}`
-                }
+                },
+                credentials: API_CONFIG.withCredentials ? 'include' : 'same-origin',
             });
             
             const authCheck = await authCheckResponse.json();
@@ -287,7 +290,7 @@ export default function Asignation({ open, onClose, users = [] }) {
                 await verifyToken();
             }
 
-            console.log('�📅 Procesando fechas...');
+            console.log('📅 Procesando fechas...');
             const dueDateWithTime = combineDateTime(form.dueDate, form.dueTime);
             const closeDateWithTime = combineDateTime(form.closeDate, form.closeTime);
 
@@ -316,19 +319,20 @@ export default function Asignation({ open, onClose, users = [] }) {
             }
 
             console.log('🚀 Enviando petición al servidor...');
-            console.log('URL:', 'http://localhost:3001/api/assignments');
+            console.log('URL:', buildApiUrl('/assignments'));
             console.log('Token presente:', !!token);
             console.log('FormData entries:');
             for (let [key, value] of formData.entries()) {
                 console.log(`  ${key}:`, typeof value === 'object' && value instanceof File ? `File: ${value.name}` : value);
             }
             
-            const response = await fetch('http://localhost:3001/api/assignments', {
+            const response = await fetch(buildApiUrl('/assignments'), {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`
                 },
-                body: formData
+                body: formData,
+                credentials: API_CONFIG.withCredentials ? 'include' : 'same-origin',
             });
             
             console.log('📡 Respuesta del servidor:', response.status, response.statusText);
@@ -368,7 +372,7 @@ export default function Asignation({ open, onClose, users = [] }) {
             
             // Mejorar mensajes de error comunes
             if (err.message.includes('Failed to fetch')) {
-                errorMessage = 'No se pudo conectar con el servidor. Verifique que el servidor esté ejecutándose en http://localhost:3001';
+                errorMessage = `No se pudo conectar con el servidor. Verifique que el servidor esté ejecutándose en ${backendOrigin}`;
             } else if (err.message.includes('NetworkError')) {
                 errorMessage = 'Error de red. Verifique su conexión a internet y que el servidor esté disponible.';
             } else if (err.message.includes('401')) {

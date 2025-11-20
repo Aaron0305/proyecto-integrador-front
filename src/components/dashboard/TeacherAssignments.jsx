@@ -52,6 +52,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '@mui/material/styles';
 import { getTeacherAssignmentStats, getTeacherAssignments, getAllTeachersStats } from '../../services/assignmentService';
+import { getAssetUrl } from '../../config/api';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -954,7 +955,7 @@ const TeacherAssignments = () => {
                                                             <Chip
                                                                 icon={<FileDownload />}
                                                                 label={file.fileName}
-                                                                onClick={() => window.open(`http://localhost:3001/${file.fileUrl}`, '_blank')}
+                                                                onClick={() => window.open(getAssetUrl(file.fileUrl), '_blank')}
                                                                 sx={{ 
                                                                     mr: 1, 
                                                                     mb: 1,

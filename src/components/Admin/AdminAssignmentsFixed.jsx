@@ -61,6 +61,7 @@ import {
 } from '../../services/assignmentService';
 import EditAssignment from './EditAssignment';
 import ScheduledAssignments from './ScheduledAssignmentsSimple';
+import API_CONFIG, { buildApiUrl, getAssetUrl } from '../../config/api';
 
 // Custom animated components
 const AnimatedBadge = motion(Badge);
@@ -103,11 +104,12 @@ const AdminAssignments = ({ open, onClose }) => {
         try {
             const token = localStorage.getItem('token');
             if (!token) throw new Error('No hay token de autenticación');
-            const response = await fetch('http://localhost:3001/api/stats/teachers', {
+            const response = await fetch(buildApiUrl('/stats/teachers'), {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
-                }
+                },
+                credentials: API_CONFIG.withCredentials ? 'include' : 'same-origin',
             });
             const responseData = await response.text();
             if (!response.ok) throw new Error(`Error ${response.status}: ${responseData}`);
@@ -972,7 +974,7 @@ const AdminAssignments = ({ open, onClose }) => {
                                                         <Chip
                                                             icon={<FileDownload />}
                                                             label={file.fileName}
-                                                            onClick={() => window.open(`http://localhost:3001/${file.fileUrl}`, '_blank')}
+                                                            onClick={() => window.open(getAssetUrl(file.fileUrl), '_blank')}
                                                             sx={{ 
                                                                 mr: 1, 
                                                                 mb: 1,

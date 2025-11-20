@@ -24,6 +24,7 @@ import {
   Divider,
   useTheme
 } from '@mui/material';
+import {
 import { 
   ArrowBack, 
   Event, 
@@ -33,6 +34,7 @@ import {
   CheckCircle,
   Today
 } from '@mui/icons-material';
+import { getAssetUrl } from '../../config/api';
 
 // Estilos personalizados
 const StyledCalendarContainer = styled(Paper)(() => ({
@@ -206,7 +208,7 @@ const ActivityDetails = ({ registro }) => {
                   variant="outlined"
                   size="small"
                   startIcon={<AttachFile />}
-                  href={`http://localhost:3001${evidencia.url}`}
+                  href={getAssetUrl(evidencia.url)}
                   target="_blank"
                   sx={{
                     borderRadius: '20px',

@@ -44,6 +44,15 @@ import {
   Computer,
   Usb
 } from '@mui/icons-material';
+import { API_ENV } from '../../config/api';
+
+const RP_ID = (() => {
+  try {
+    return new URL(API_ENV.BASE_ORIGIN).hostname || 'localhost';
+  } catch {
+    return 'localhost';
+  }
+})();
 
 const BiometricSettings = () => {
   const [isEnabled, setIsEnabled] = useState(false);
@@ -139,7 +148,7 @@ const BiometricSettings = () => {
           challenge: new Uint8Array(32), // Challenge temporal para la captura local
           rp: {
             name: 'Sistema de Seguimiento de Docentes',
-            id: 'localhost'
+            id: RP_ID
           },
           user: {
             id: new TextEncoder().encode('temp_user_id'),
