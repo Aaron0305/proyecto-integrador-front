@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import setupAxiosInterceptors from '../utils/axiosDebugger';
+import WebAuthnService from '../services/webauthnService';
 
 export const AuthContext = createContext();
 
@@ -80,10 +81,16 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
+      // Timeout adicional para evitar requests infinitos
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos timeout
+
       const response = await axios.get('http://localhost:3001/api/auth/verify', {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        signal: controller.signal
       });
       
+      clearTimeout(timeoutId);
       const userData = response.data.user;
       localStorage.setItem('user', JSON.stringify(userData));
       setCurrentUser(userData);
@@ -94,10 +101,10 @@ export const AuthProvider = ({ children }) => {
       console.error('Error verificando token:', error);
       
       // Si el error es de autenticación y no hemos excedido los reintentos
-      if (error.response?.status === 401 && retryCount < 3) {
+      if (error.response?.status === 401 && retryCount < 2) { // Reducido a 2 reintentos
         setRetryCount(prev => prev + 1);
-        // Reintentamos en 1 segundo
-        setTimeout(verifyToken, 1000);
+        // Reintentamos en 2 segundos
+        setTimeout(verifyToken, 2000);
         return;
       }
       
@@ -111,13 +118,13 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     verifyToken();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Verificar el token cada 5 minutos
   useEffect(() => {
     const interval = setInterval(verifyToken, 300000); // 5 minutos
     return () => clearInterval(interval);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateUserProfile = async () => {
     await verifyToken(); // Usar la misma función de verificación
@@ -155,6 +162,54 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // ===============================
+  // FUNCIONES DE WEBAUTHN/BIOMÉTRICO
+  // ===============================
+
+  const loginWithBiometric = async () => {
+    const result = await WebAuthnService.authenticateWithBiometric();
+    
+    if (result.success) {
+      setCurrentUser(result.user);
+      setRetryCount(0);
+      return result;
+    }
+    
+    throw new Error('Error en la autenticación biométrica');
+  };
+
+  const registerBiometricDevice = async () => {
+    return await WebAuthnService.registerDevice();
+  };
+
+  const getBiometricDevices = async () => {
+    return await WebAuthnService.getRegisteredDevices();
+  };
+
+  const removeBiometricDevice = async () => {
+    return await WebAuthnService.removeDevice();
+  };
+
+  const isBiometricSupported = () => {
+    return WebAuthnService.isSupported();
+  };
+
+  const checkBiometricAvailable = async () => {
+    try {
+      return await WebAuthnService.hasAvailableAuthenticator();
+    } catch {
+      return false;
+    }
+  };
+
+  const userHasBiometricDevices = async (email) => {
+    try {
+      return await WebAuthnService.userHasBiometricDevices(email);
+    } catch {
+      return false;
+    }
+  };
+
   return (
     <AuthContext.Provider 
       value={{ 
@@ -166,10 +221,18 @@ export const AuthProvider = ({ children }) => {
         updateUserProfile,
         forgotPassword,
         resetPassword,
-        verifyToken // Exponemos la función de verificación
+        verifyToken, // Exponemos la función de verificación
+        // Funciones WebAuthn/Biométricas
+        loginWithBiometric,
+        registerBiometricDevice,
+        getBiometricDevices,
+        removeBiometricDevice,
+        isBiometricSupported,
+        checkBiometricAvailable,
+        userHasBiometricDevices
       }}
     >
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 };

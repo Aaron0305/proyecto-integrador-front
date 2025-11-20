@@ -17,6 +17,7 @@ import {
 import MenuIcon from '@mui/icons-material/Menu';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import NotificationsIcon from '@mui/icons-material/Notifications';
+import PersonIcon from '@mui/icons-material/Person';
 import { AuthContext } from '../../contexts/AuthContext';
 import AdminAccessDialog from '../Admin/AdminAccessDialog';
 import { io } from 'socket.io-client';
@@ -389,6 +390,26 @@ export default function Navbar() {
                   </AdminButton>
                 </Fade>
 
+                <Fade in={true} timeout={1300}>
+                  <Button 
+                    component={Link}
+                    to="/profile"
+                    startIcon={<PersonIcon />}
+                    sx={{
+                      color: '#ffffff',
+                      fontWeight: 500,
+                      mr: 1,
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                        transform: 'translateY(-2px)',
+                      }
+                    }}
+                  >
+                    Perfil
+                  </Button>
+                </Fade>
+
                 <Fade in={true} timeout={1400}>
                   <Button 
                     onClick={handleLogout}
@@ -526,6 +547,23 @@ export default function Navbar() {
                     Administración
                   </MenuItem>
                   
+                  <MenuItem 
+                    component={Link}
+                    to="/profile"
+                    sx={{
+                      my: 0.5,
+                      mx: 1,
+                      borderRadius: '4px',
+                      backgroundColor: location.pathname === '/profile' ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
+                      '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.1)' },
+                      borderLeft: location.pathname === '/profile' ? '4px solid #FFD700' : 'none',
+                      pl: location.pathname === '/profile' ? 2 : 3,
+                      fontWeight: location.pathname === '/profile' ? 600 : 400,
+                    }}
+                  >
+                    Perfil
+                  </MenuItem>
+
                   <Divider sx={{ bgcolor: 'rgba(255,255,255,0.2)', my: 1 }} />
                   
                   <MenuItem 

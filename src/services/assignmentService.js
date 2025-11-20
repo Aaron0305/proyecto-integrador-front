@@ -184,9 +184,15 @@ export const getTeacherAssignments = getTeacherFilteredAssignments;
 
 // Función para obtener estadísticas de todos los docentes
 export const getAllTeachersStats = async () => {
-    // Por ahora devolvemos un objeto vacío ya que esta ruta no existe en el backend
-    // TODO: Implementar la ruta /admin/teachers-stats en el backend si es necesaria
-    return { teachers: [], totalTeachers: 0 };
+    try {
+        // Intentar obtener las estadísticas desde el backend
+        const response = await axios.get(`${API_URL}/admin/teachers-stats`, getAuthHeaders());
+        return response.data;
+    } catch {
+        console.log('Stats endpoint not available, returning empty data');
+        // Si la ruta no existe, devolvemos datos vacíos sin errores
+        return { success: true, stats: [] };
+    }
 };
 
 export const markAssignmentCompleted = async (assignmentId) => {

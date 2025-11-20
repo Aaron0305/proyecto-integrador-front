@@ -15,17 +15,21 @@ import {
   ThemeProvider,
   Grow,
   Zoom,
-  Fade
+  Fade,
+  Divider,
+  Chip
 } from '@mui/material';
 import {
   Visibility,
   VisibilityOff,
   Email,
   Lock,
-  KeyboardArrowRight
+  KeyboardArrowRight,
+  Fingerprint
 } from '@mui/icons-material';
 import { theme } from '../../theme/palette';
 import ForgotPasswordLink from './ForgotPasswordLink';
+import { BiometricLoginDialog } from './BiometricLogin';
 
 // Componente de campo de entrada animado
 const AnimatedTextField = ({ label, type, value, onChange, icon, endAdornment, ...props }) => {
@@ -84,9 +88,12 @@ export default function Login() {
   const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showBiometricDialog, setShowBiometricDialog] = useState(false);
+  const [biometricSupported, setBiometricSupported] = useState(false);
+  const [userHasBiometric, setUserHasBiometric] = useState(false);
   
   // Obtenemos currentUser del contexto para verificar si ya hay una sesión activa
-  const { login, currentUser } = useContext(AuthContext);
+  const { login, currentUser, isBiometricSupported, userHasBiometricDevices } = useContext(AuthContext);
   const navigate = useNavigate();
   
   // Redirigir si ya hay una sesión activa
@@ -96,8 +103,40 @@ export default function Login() {
     }
   }, [currentUser, navigate]);
 
+  // Verificar soporte biométrico
+  useEffect(() => {
+    setBiometricSupported(isBiometricSupported());
+  }, [isBiometricSupported]);
+
+  // Verificar si el usuario tiene dispositivos biométricos cuando ingresa email
+  useEffect(() => {
+    const checkUserBiometric = async () => {
+      if (email && email.includes('@')) {
+        try {
+          const hasBiometric = await userHasBiometricDevices(email);
+          setUserHasBiometric(hasBiometric);
+        } catch (error) {
+          setUserHasBiometric(false);
+        }
+      } else {
+        setUserHasBiometric(false);
+      }
+    };
+
+    const timeoutId = setTimeout(checkUserBiometric, 500); // Debounce
+    return () => clearTimeout(timeoutId);
+  }, [email, userHasBiometricDevices]);
+
   const handleShowPassword = () => {
     setShowPassword(!showPassword);
+  };
+
+  const handleBiometricLogin = () => {
+    if (!email || !email.includes('@')) {
+      setError('Por favor ingresa tu correo electrónico primero');
+      return;
+    }
+    setShowBiometricDialog(true);
   };
 
   const handleSubmit = async (e) => {
@@ -193,7 +232,7 @@ export default function Login() {
               <Fade in={true} timeout={1000}>
                 <Typography 
                   variant="h4" 
-                  component="body1" 
+                  component="h1" 
                   gutterBottom
                   sx={{ 
                     fontWeight: 600,
@@ -331,6 +370,75 @@ export default function Login() {
                 </Button>
               </Zoom>
 
+              {/* Opción de login biométrico */}
+              {biometricSupported && userHasBiometric && (
+                <Fade in={true} style={{ transitionDelay: '800ms' }}>
+                  <Box sx={{ mt: 2 }}>
+                    <Divider sx={{ mb: 2 }}>
+                      <Chip 
+                        label="O usa" 
+                        size="small" 
+                        sx={{ 
+                          bgcolor: 'background.paper',
+                          color: 'text.secondary',
+                          border: 'none'
+                        }} 
+                      />
+                    </Divider>
+                    
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      size="large"
+                      onClick={handleBiometricLogin}
+                      disabled={loading || success || !email || !email.includes('@')}
+                      startIcon={<Fingerprint />}
+                      sx={{
+                        py: 1.5,
+                        borderRadius: 2,
+                        borderColor: theme.palette.secondary.main,
+                        color: theme.palette.secondary.main,
+                        fontWeight: 500,
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          borderColor: theme.palette.secondary.main,
+                          backgroundColor: theme.palette.secondary.main,
+                          color: 'white',
+                          transform: 'translateY(-1px)',
+                          boxShadow: '0 3px 6px rgba(0,0,0,0.1)'
+                        },
+                        '&:disabled': {
+                          borderColor: theme.palette.action.disabled,
+                          color: theme.palette.action.disabled
+                        }
+                      }}
+                    >
+                      Acceso Biométrico
+                    </Button>
+                  </Box>
+                </Fade>
+              )}
+
+              {/* Mostrar aviso si el navegador soporta biométrico pero el usuario no lo ha configurado */}
+              {biometricSupported && !userHasBiometric && email && email.includes('@') && (
+                <Fade in={true} style={{ transitionDelay: '900ms' }}>
+                  <Alert 
+                    severity="info" 
+                    variant="outlined"
+                    sx={{ 
+                      mt: 2, 
+                      borderRadius: 2,
+                      fontSize: '0.875rem',
+                      '& .MuiAlert-icon': {
+                        fontSize: '1rem'
+                      }
+                    }}
+                  >
+                    💡 Después de iniciar sesión puedes configurar acceso biométrico en tu perfil
+                  </Alert>
+                </Fade>
+              )}
+
               <Fade in={true} style={{ transitionDelay: '900ms' }}>
                 <Box sx={{ textAlign: 'center', mt: 4 }}>
                   <Typography variant="body1">
@@ -368,6 +476,13 @@ export default function Login() {
             </Box>
           </Paper>
         </Zoom>
+
+        {/* Dialog de login biométrico */}
+        <BiometricLoginDialog 
+          open={showBiometricDialog}
+          onClose={() => setShowBiometricDialog(false)}
+          email={email}
+        />
       </Container>
     </ThemeProvider>
   );

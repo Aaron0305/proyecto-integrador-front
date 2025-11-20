@@ -56,9 +56,9 @@ import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 // Custom animated components
-const AnimatedCard = motion(Card);
-const AnimatedBadge = motion(Badge);
-const AnimatedButton = motion(Button);
+const AnimatedCard = motion.create(Card);
+const AnimatedBadge = motion.create(Badge);
+const AnimatedButton = motion.create(Button);
 
 const TeacherAssignments = () => {
     const theme = useTheme();
@@ -84,15 +84,29 @@ const TeacherAssignments = () => {
     const [showDetailDialog, setShowDetailDialog] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
-    // Load stats on mount
+    // Load stats on mount - optimized
     useEffect(() => {
-        loadStats();
-        loadAllTeachersStats();
+        const loadInitialData = async () => {
+            try {
+                await Promise.all([
+                    loadStats(),
+                    loadAssignments(),
+                    // loadAllTeachersStats() // Comentado temporalmente para mejorar rendimiento
+                ]);
+            } catch (error) {
+                console.error('Error loading initial data:', error);
+            }
+        };
+        loadInitialData();
     }, []);
 
-    // Load assignments when filters change
+    // Load assignments when filters change (debounced)
     useEffect(() => {
-        loadAssignments();
+        const delayedLoad = setTimeout(() => {
+            loadAssignments();
+        }, 300); // 300ms delay para evitar múltiples requests
+
+        return () => clearTimeout(delayedLoad);
     }, [statusFilter, searchTerm, sortBy, page]);
 
     const loadStats = async () => {
@@ -329,67 +343,71 @@ const TeacherAssignments = () => {
 
     return (
         <Box sx={{ p: 3 }}>
-            {/* Estadísticas de todos los profesores */}
-            <Paper sx={{ mb: 3, p: 2 }}>
-                <Typography variant="h6" gutterBottom>
-                    Estadísticas de Docentes
-                </Typography>
-                <TableContainer>
-                    <Table>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell align="center">Completadas</TableCell>
-                                <TableCell align="center">Pendientes</TableCell>
-                                <TableCell align="center">Vencidas</TableCell>
-                                <TableCell align="center">Total</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {allTeachersStats.map((teacherStat) => (
-                                <TableRow key={teacherStat.teacherId}>
-                                    <TableCell>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <Person />
-                                            <Typography>{teacherStat.teacherName}</Typography>
-                                        </Box>
-                                    </TableCell>
-                                    <TableCell align="center">
-                                        <Chip 
-                                            label={teacherStat.stats.completed}
-                                            color="success"
-                                            size="small"
-                                        />
-                                    </TableCell>
-                                    <TableCell align="center">
-                                        <Chip 
-                                            label={teacherStat.stats.pending}
-                                            color="primary"
-                                            size="small"
-                                        />
-                                    </TableCell>
-                                    <TableCell align="center">
-                                        <Chip 
-                                            label={teacherStat.stats.overdue}
-                                            color="error"
-                                            size="small"
-                                        />
-                                    </TableCell>
-                                    <TableCell align="center">
-                                        <Chip 
-                                            label={teacherStat.stats.total}
-                                            color="default"
-                                            size="small"
-                                        />
-                                    </TableCell>
-                                    <TableCell align="center">
-                                        {new Date(teacherStat.lastUpdated).toLocaleString()}
-                                    </TableCell>
+            {/* Estadísticas de todos los profesores - Temporalmente comentado para mejorar rendimiento */}
+            {allTeachersStats.length > 0 && (
+                <Paper sx={{ mb: 3, p: 2 }}>
+                    <Typography variant="h6" gutterBottom>
+                        Estadísticas de Docentes
+                    </Typography>
+                    <TableContainer>
+                        <Table>
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell>Docente</TableCell>
+                                    <TableCell align="center">Completadas</TableCell>
+                                    <TableCell align="center">Pendientes</TableCell>
+                                    <TableCell align="center">Vencidas</TableCell>
+                                    <TableCell align="center">Total</TableCell>
+                                    <TableCell align="center">Última Actualización</TableCell>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
-            </Paper>
+                            </TableHead>
+                            <TableBody>
+                                {allTeachersStats.map((teacherStat) => (
+                                    <TableRow key={teacherStat.teacherId}>
+                                        <TableCell>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <Person />
+                                                <Typography>{teacherStat.teacherName}</Typography>
+                                            </Box>
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            <Chip 
+                                                label={teacherStat.stats?.completed || 0}
+                                                color="success"
+                                                size="small"
+                                            />
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            <Chip 
+                                                label={teacherStat.stats?.pending || 0}
+                                                color="primary"
+                                                size="small"
+                                            />
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            <Chip 
+                                                label={teacherStat.stats?.overdue || 0}
+                                                color="error"
+                                                size="small"
+                                            />
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            <Chip 
+                                                label={teacherStat.stats?.total || 0}
+                                                color="default"
+                                                size="small"
+                                            />
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            {teacherStat.lastUpdated ? new Date(teacherStat.lastUpdated).toLocaleString() : 'N/A'}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                </Paper>
+            )}
 
             {/* Stats cards with animations */}
             {stats && (
@@ -606,8 +624,7 @@ const TeacherAssignments = () => {
                         </TableHead>
                         <TableBody>
                             {assignments.map((assignment) => {
-                                const isNotDelivered = assignment.status === 'not-delivered' || (assignment.status === 'pending' && new Date(assignment.dueDate) < new Date());
-                                const status = isNotDelivered ? 'not-delivered' : assignment.status;
+                                const isOverdue = assignment.status === 'pending' && new Date(assignment.dueDate) < new Date();
                                 
                                 return (
                                     <TableRow 

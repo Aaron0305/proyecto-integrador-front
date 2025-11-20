@@ -9,6 +9,7 @@ import Register from './components/Auth/Register';
 import ForgotPassword from './components/Auth/ForgotPassword';
 import ResetPassword from './components/Auth/ResetPassword';
 import ActiveSession from './components/dashboard/ActiveSession';
+import ProfileSettings from './components/Profile/ProfileSettings';
 import { theme } from './theme/palette';
 import AdminAccessDialog from './components/Admin/AdminAccessDialog';
 import Structure from './components/Admin/Structure';
@@ -33,6 +34,7 @@ function App() {
             <Route path='/admin-access' element={<AdminAccessDialog />} />
             <Route path='/admin-structure' element={<Structure />} />
             <Route path="/dashboard" element={ <PrivateRoute> <ActiveSession /> </PrivateRoute> } />
+            <Route path="/profile" element={ <PrivateRoute> <ProfileSettings /> </PrivateRoute> } />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </AuthProvider>

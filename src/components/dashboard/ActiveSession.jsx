@@ -47,21 +47,7 @@ const floatingAnimation = keyframes`
   50% { transform: translateY(-10px); }
 `;
 
-const pulseGlow = keyframes`
-  0%, 100% { 
-    box-shadow: 0 0 5px rgba(16, 185, 129, 0.5);
-    transform: scale(1);
-  }
-  50% { 
-    box-shadow: 0 0 20px rgba(16, 185, 129, 0.8);
-    transform: scale(1.05);
-  }
-`;
-
-const shimmerAnimation = keyframes`
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-`;
+// Removed unused animations to clean up the code
 
 // Componente principal responsive con margen superior agregado
 const ResponsiveContainer = styled(Container)(({ theme }) => ({
@@ -213,7 +199,7 @@ const InfoCardAdaptive = styled(Paper)(({ theme }) => ({
 }));
 
 // Efecto shimmer para las tarjetas
-const ShimmerEffect = styled(Box)(({ theme }) => ({
+const ShimmerEffect = styled(Box)(() => ({
   position: 'absolute',
   top: 0,
   left: '-100%',
@@ -326,9 +312,6 @@ const ActiveSession = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
-  const isDesktop = useMediaQuery(theme.breakpoints.up('lg'));
-  
-  const [userReady, setUserReady] = useState(false);
   const [error, setError] = useState('');
   const [openWelcome, setOpenWelcome] = useState(true);
   const [showContent, setShowContent] = useState(false);
@@ -338,29 +321,14 @@ const ActiveSession = () => {
       console.log('✅ Usuario completamente cargado:', currentUser);
       console.log('📁 Foto de perfil disponible:', currentUser.fotoPerfil);
       
-      const lastUserReload = sessionStorage.getItem('lastUserReload');
-      const currentUserKey = `${currentUser._id}-${currentUser.fotoPerfil}`;
-      
-      if (lastUserReload !== currentUserKey) {
-        console.log('🔄 Recargando página para mostrar imagen actualizada...');
-        sessionStorage.setItem('lastUserReload', currentUserKey);
-        
-        setTimeout(() => {
-          window.location.reload();
-        }, 5);
-        
-        return; 
-      }
-      
-      setUserReady(true);
+      // Eliminamos la lógica de recarga automática que causa problemas
       setTimeout(() => setShowContent(true), 300);
       
     } else if (!loading && !currentUser) {
       console.log('❌ No hay usuario autenticado');
-      setUserReady(true);
       setTimeout(() => setShowContent(true), 300);
     }
-  }, [loading, currentUser?.fotoPerfil, currentUser?._id]);
+  }, [loading, currentUser]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -370,8 +338,8 @@ const ActiveSession = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // Pantalla de loading mejorada
-  if (loading || !userReady) {
+  // Pantalla de loading optimizada
+  if (loading && !currentUser) {
     return (
       <LoadingContainer>
         <Box sx={{ width: '100%', maxWidth: 400, mb: 3 }}>
