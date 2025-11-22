@@ -17,29 +17,45 @@ export class WebAuthnService {
   static _toBase64Url(input) {
     if (!input) return '';
 
-    // Si ya es string, asumir que es base64 o base64url y normalizar
-    if (typeof input === 'string') {
-      return input.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-    }
-
-    // Si es ArrayBuffer o Uint8Array
-    if (input instanceof ArrayBuffer || input instanceof Uint8Array) {
-      const bytes = new Uint8Array(input);
-      let binary = '';
-      for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
-      }
-      return btoa(binary)
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=/g, '');
-    }
-
-    // Fallback seguro
     try {
-      return String(input);
+      // Si ya es string, asumir que es base64 o base64url y normalizar
+      if (typeof input === 'string') {
+        // Si ya es base64url, retornar tal cual
+        if (/^[A-Za-z0-9_-]+$/.test(input)) {
+          return input;
+        }
+        // Si es base64 normal, convertir a base64url
+        return String(input).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+      }
+
+      // Si es ArrayBuffer o Uint8Array
+      if (input instanceof ArrayBuffer || input instanceof Uint8Array) {
+        const bytes = new Uint8Array(input);
+        let binary = '';
+        for (let i = 0; i < bytes.byteLength; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary)
+          .replace(/\+/g, '-')
+          .replace(/\//g, '_')
+          .replace(/=/g, '');
+      }
+
+      // Si es un objeto con toString
+      if (input && typeof input === 'object') {
+        console.warn('_toBase64Url recibió un objeto inesperado:', input);
+        // Intentar extraer propiedades comunes
+        if (input.toString && typeof input.toString === 'function') {
+          const str = input.toString();
+          return str.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+        }
+      }
+
+      // Fallback: convertir a string de forma segura
+      const strValue = String(input);
+      return strValue.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
     } catch (e) {
-      console.error('Error convirtiendo a base64url:', e);
+      console.error('Error convirtiendo a base64url:', e, 'input:', input);
       return '';
     }
   }
@@ -109,11 +125,21 @@ export class WebAuthnService {
 
       // Procesar datos asegurando formato correcto (base64url)
       // startRegistration puede devolver JSON (strings) o objetos nativos (ArrayBuffers)
+      if (!credential || !credential.response) {
+        throw new Error('Respuesta de credencial inválida del navegador');
+      }
+
       const credentialIdBase64url = this._toBase64Url(credential.rawId || credential.id);
       const attestationObjectBase64url = this._toBase64Url(credential.response.attestationObject);
       const clientDataJSONBase64url = this._toBase64Url(credential.response.clientDataJSON);
 
+      if (!credentialIdBase64url || !attestationObjectBase64url || !clientDataJSONBase64url) {
+        throw new Error('Error al procesar datos de la credencial. Algunos datos están vacíos.');
+      }
+
       console.log('🔑 Credential ID base64url:', credentialIdBase64url);
+      console.log('🔑 Attestation Object:', attestationObjectBase64url.substring(0, 50) + '...');
+      console.log('🔑 Client Data JSON:', clientDataJSONBase64url.substring(0, 50) + '...');
 
       // Preparar datos para SimpleWebAuthn verificación
       const registrationData = {
@@ -124,7 +150,7 @@ export class WebAuthnService {
             attestationObject: attestationObjectBase64url,
             clientDataJSON: clientDataJSONBase64url
           },
-          type: credential.type,
+          type: credential.type || 'public-key',
           clientExtensionResults: credential.clientExtensionResults || {}
         }
       };
