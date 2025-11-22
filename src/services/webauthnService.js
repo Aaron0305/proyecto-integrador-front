@@ -125,38 +125,35 @@ export class WebAuthnService {
       const credential = await startRegistration(options);
 
       console.log('✅ Credencial creada (raw):', credential);
+      console.log('📋 Estructura credential:', {
+        hasResponse: !!credential.response,
+        responseKeys: credential.response ? Object.keys(credential.response) : [],
+        hasRawId: !!credential.rawId,
+        hasId: !!credential.id,
+        type: credential.type,
+        idType: typeof credential.id,
+        rawIdType: typeof credential.rawId
+      });
 
       // Procesar datos asegurando formato correcto (base64url)
-      // startRegistration puede devolver JSON (strings) o objetos nativos (ArrayBuffers)
+      // SimpleWebAuthn v6+ ya devuelve en base64url
       if (!credential || !credential.response) {
         throw new Error('Respuesta de credencial inválida del navegador');
       }
 
-      const credentialIdBase64url = this._toBase64Url(credential.rawId || credential.id);
-      const attestationObjectBase64url = this._toBase64Url(credential.response.attestationObject);
-      const clientDataJSONBase64url = this._toBase64Url(credential.response.clientDataJSON);
-
-      if (!credentialIdBase64url || !attestationObjectBase64url || !clientDataJSONBase64url) {
-        throw new Error('Error al procesar datos de la credencial. Algunos datos están vacíos.');
-      }
-
-      console.log('🔑 Credential ID base64url:', credentialIdBase64url);
-      console.log('🔑 Attestation Object:', attestationObjectBase64url.substring(0, 50) + '...');
-      console.log('🔑 Client Data JSON:', clientDataJSONBase64url.substring(0, 50) + '...');
-
-      // Preparar datos para SimpleWebAuthn verificación
+      // SimpleWebAuthn devuelve credential con response que ya está en base64url
+      // Estructura: { id, rawId, response: { attestationObject, clientDataJSON }, type }
       const registrationData = {
-        response: {
-          id: credentialIdBase64url,
-          rawId: credentialIdBase64url,
-          response: {
-            attestationObject: attestationObjectBase64url,
-            clientDataJSON: clientDataJSONBase64url
-          },
-          type: credential.type || 'public-key',
-          clientExtensionResults: credential.clientExtensionResults || {}
-        }
+        response: credential  // SimpleWebAuthn ya proporciona el formato correcto
       };
+
+      console.log('📤 Datos para enviar al servidor:', {
+        hasResponse: !!registrationData.response,
+        responseKeys: registrationData.response ? Object.keys(registrationData.response) : [],
+        id: registrationData.response?.id?.substring(0, 50),
+        attestationObject: registrationData.response?.response?.attestationObject?.substring(0, 50),
+        clientDataJSON: registrationData.response?.response?.clientDataJSON?.substring(0, 50)
+      });
 
       const verificationResponse = await axios.post(
         `${API_BASE}/auth/biometric/register`,
