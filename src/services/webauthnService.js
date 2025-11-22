@@ -18,42 +18,45 @@ export class WebAuthnService {
     if (!input) return '';
 
     try {
-      // Si ya es string, asumir que es base64 o base64url y normalizar
-      if (typeof input === 'string') {
-        // Si ya es base64url, retornar tal cual
-        if (/^[A-Za-z0-9_-]+$/.test(input)) {
-          return input;
-        }
-        // Si es base64 normal, convertir a base64url
-        return String(input).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-      }
-
-      // Si es ArrayBuffer o Uint8Array
+      // Si es ArrayBuffer o Uint8Array - SIEMPRE convertir a string base64 primero
       if (input instanceof ArrayBuffer || input instanceof Uint8Array) {
         const bytes = new Uint8Array(input);
         let binary = '';
         for (let i = 0; i < bytes.byteLength; i++) {
           binary += String.fromCharCode(bytes[i]);
         }
-        return btoa(binary)
-          .replace(/\+/g, '-')
-          .replace(/\//g, '_')
-          .replace(/=/g, '');
+        const base64 = btoa(binary);
+        return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
       }
 
-      // Si es un objeto con toString
+      // Si es string
+      if (typeof input === 'string') {
+        // Verificar si ya es base64url válido
+        if (/^[A-Za-z0-9_-]*$/.test(input)) {
+          return input;
+        }
+        // Si es base64 normal, convertir a base64url
+        return input.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+      }
+
+      // Si es un objeto - intentar extraer propiedades
       if (input && typeof input === 'object') {
-        console.warn('_toBase64Url recibió un objeto inesperado:', input);
-        // Intentar extraer propiedades comunes
-        if (input.toString && typeof input.toString === 'function') {
-          const str = input.toString();
+        console.warn('_toBase64Url recibió un objeto:', typeof input, Object.prototype.toString.call(input));
+        
+        // Intentar JSON.stringify si es un objeto serializable
+        try {
+          const jsonStr = JSON.stringify(input);
+          return jsonStr.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+        } catch {
+          // Intentar toString
+          const str = String(input);
           return str.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
         }
       }
 
-      // Fallback: convertir a string de forma segura
-      const strValue = String(input);
-      return strValue.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+      // Último recurso - convertir a string
+      const result = String(input);
+      return result.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
     } catch (e) {
       console.error('Error convirtiendo a base64url:', e, 'input:', input);
       return '';
