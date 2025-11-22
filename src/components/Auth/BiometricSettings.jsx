@@ -48,7 +48,12 @@ import { API_ENV } from '../../config/api';
 
 const RP_ID = (() => {
   try {
-    return new URL(API_ENV.BASE_ORIGIN).hostname || 'localhost';
+    const currentHostname = window.location.hostname;
+    console.log('🔍 RP_ID:', currentHostname);
+    if (currentHostname === 'localhost' || currentHostname === '127.0.0.1') {
+      return 'localhost';
+    }
+    return currentHostname;
   } catch {
     return 'localhost';
   }
