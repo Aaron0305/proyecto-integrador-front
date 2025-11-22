@@ -91,11 +91,12 @@ export default function Login() {
   const [showBiometricDialog, setShowBiometricDialog] = useState(false);
   const [biometricSupported, setBiometricSupported] = useState(false);
   const [userHasBiometric, setUserHasBiometric] = useState(false);
-  
+  const [biometricAttempted, setBiometricAttempted] = useState(false);
+
   // Obtenemos currentUser del contexto para verificar si ya hay una sesión activa
   const { login, currentUser, isBiometricSupported, userHasBiometricDevices } = useContext(AuthContext);
   const navigate = useNavigate();
-  
+
   // Redirigir si ya hay una sesión activa
   useEffect(() => {
     if (currentUser) {
@@ -103,10 +104,24 @@ export default function Login() {
     }
   }, [currentUser, navigate]);
 
-  // Verificar soporte biométrico
+  // Verificar soporte biométrico y abrir diálogo automáticamente
   useEffect(() => {
-    setBiometricSupported(isBiometricSupported());
-  }, [isBiometricSupported]);
+    const checkAndShowBiometric = async () => {
+      const supported = isBiometricSupported();
+      setBiometricSupported(supported);
+
+      // Si el navegador soporta biometría y aún no se ha intentado, mostrar el diálogo automáticamente
+      if (supported && !biometricAttempted) {
+        setBiometricAttempted(true);
+        // Pequeño delay para que la UI se renderice primero
+        setTimeout(() => {
+          setShowBiometricDialog(true);
+        }, 500);
+      }
+    };
+
+    checkAndShowBiometric();
+  }, [isBiometricSupported, biometricAttempted]);
 
   // Verificar si el usuario tiene dispositivos biométricos cuando ingresa email
   useEffect(() => {
@@ -179,10 +194,10 @@ export default function Login() {
 
   return (
     <ThemeProvider theme={theme}>
-      <Container 
-        maxWidth="sm" 
-        sx={{ 
-          mt: 12, 
+      <Container
+        maxWidth="sm"
+        sx={{
+          mt: 12,
           mb: 8,
           minHeight: '80vh',
           display: 'flex',
@@ -191,9 +206,9 @@ export default function Login() {
         }}
       >
         <Zoom in={true} style={{ transitionDelay: '100ms' }}>
-          <Paper 
-            elevation={6} 
-            sx={{ 
+          <Paper
+            elevation={6}
+            sx={{
               borderRadius: 3,
               overflow: 'hidden',
               width: '100%',
@@ -210,9 +225,9 @@ export default function Login() {
               }
             }}
           >
-            <Box sx={{ 
-              p: 4, 
-              bgcolor: theme.palette.primary.main, 
+            <Box sx={{
+              p: 4,
+              bgcolor: theme.palette.primary.main,
               color: 'white',
               textAlign: 'center',
               position: 'relative',
@@ -230,11 +245,11 @@ export default function Login() {
               },
             }}>
               <Fade in={true} timeout={1000}>
-                <Typography 
-                  variant="h4" 
-                  component="h1" 
+                <Typography
+                  variant="h4"
+                  component="h1"
                   gutterBottom
-                  sx={{ 
+                  sx={{
                     fontWeight: 600,
                     letterSpacing: '1px',
                     textShadow: '0px 2px 4px rgb(0, 0, 0)'
@@ -250,10 +265,10 @@ export default function Login() {
               </Fade>
             </Box>
 
-            <Box 
-              component="form" 
-              onSubmit={handleSubmit} 
-              sx={{ 
+            <Box
+              component="form"
+              onSubmit={handleSubmit}
+              sx={{
                 p: 4,
                 display: 'flex',
                 flexDirection: 'column',
@@ -262,8 +277,8 @@ export default function Login() {
             >
               {error && (
                 <Grow in={!!error} timeout={500}>
-                  <Alert 
-                    severity="error" 
+                  <Alert
+                    severity="error"
                     variant="filled"
                     sx={{
                       borderRadius: 2,
@@ -281,8 +296,8 @@ export default function Login() {
 
               {success && (
                 <Grow in={success} timeout={500}>
-                  <Alert 
-                    severity="success" 
+                  <Alert
+                    severity="success"
                     variant="filled"
                     sx={{
                       borderRadius: 2,
@@ -375,17 +390,17 @@ export default function Login() {
                 <Fade in={true} style={{ transitionDelay: '800ms' }}>
                   <Box sx={{ mt: 2 }}>
                     <Divider sx={{ mb: 2 }}>
-                      <Chip 
-                        label="O usa" 
-                        size="small" 
-                        sx={{ 
+                      <Chip
+                        label="O usa"
+                        size="small"
+                        sx={{
                           bgcolor: 'background.paper',
                           color: 'text.secondary',
                           border: 'none'
-                        }} 
+                        }}
                       />
                     </Divider>
-                    
+
                     <Button
                       fullWidth
                       variant="outlined"
@@ -422,11 +437,11 @@ export default function Login() {
               {/* Mostrar aviso si el navegador soporta biométrico pero el usuario no lo ha configurado */}
               {biometricSupported && !userHasBiometric && email && email.includes('@') && (
                 <Fade in={true} style={{ transitionDelay: '900ms' }}>
-                  <Alert 
-                    severity="info" 
+                  <Alert
+                    severity="info"
                     variant="outlined"
-                    sx={{ 
-                      mt: 2, 
+                    sx={{
+                      mt: 2,
                       borderRadius: 2,
                       fontSize: '0.875rem',
                       '& .MuiAlert-icon': {
@@ -444,10 +459,10 @@ export default function Login() {
                   <Typography variant="body1">
                     ¿No tienes cuenta?{' '}
                     <Link to="/register" style={{ textDecoration: 'none' }}>
-                      <Typography 
-                        component="span" 
-                        fontWeight="bold" 
-                        sx={{ 
+                      <Typography
+                        component="span"
+                        fontWeight="bold"
+                        sx={{
                           color: '#041c6c',
                           position: 'relative',
                           '&:hover': {
@@ -478,7 +493,7 @@ export default function Login() {
         </Zoom>
 
         {/* Dialog de login biométrico */}
-        <BiometricLoginDialog 
+        <BiometricLoginDialog
           open={showBiometricDialog}
           onClose={() => setShowBiometricDialog(false)}
           email={email}
