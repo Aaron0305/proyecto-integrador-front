@@ -1,6 +1,8 @@
 import axios from 'axios';
 import { 
-  browserSupportsWebAuthn 
+  browserSupportsWebAuthn,
+  startRegistration,
+  startAuthentication
 } from '@simplewebauthn/browser';
 import API_CONFIG from '../config/api';
 
@@ -66,27 +68,8 @@ export class WebAuthnService {
       // Paso 2: Crear credencial biométrica usando SimpleWebAuthn
       console.log('👆 Solicitando huella digital...');
       
-      // Convertir datos base64 a Uint8Array para WebAuthn
-      const publicKeyOptions = {
-        ...options,
-        challenge: Uint8Array.from(atob(options.challenge), c => c.charCodeAt(0)),
-        user: {
-          ...options.user,
-          id: Uint8Array.from(atob(options.user.id), c => c.charCodeAt(0))
-        }
-      };
-
-      // Convertir excludeCredentials si existen  
-      if (options.excludeCredentials) {
-        publicKeyOptions.excludeCredentials = options.excludeCredentials.map(cred => ({
-          ...cred,
-          id: Uint8Array.from(atob(cred.id), c => c.charCodeAt(0))
-        }));
-      }
-      
-      const credential = await navigator.credentials.create({
-        publicKey: publicKeyOptions
-      });
+      // Usar startRegistration que maneja base64url automáticamente
+      const credential = await startRegistration(options);
       
       console.log('✅ Credencial creada:', credential);
 
@@ -184,9 +167,9 @@ export class WebAuthnService {
       // Paso 2: Solicitar autenticación biométrica al usuario
       console.log('👆 Solicitando verificación biométrica...');
       
-      // Preparar opciones de autenticación
-      const publicKeyOptions = {
-        challenge: Uint8Array.from(atob(challenge), c => c.charCodeAt(0)),
+      // Preparar opciones para startAuthentication
+      const authOptions = {
+        challenge,
         timeout: timeout || 60000,
         userVerification: "required"
       };
@@ -194,15 +177,11 @@ export class WebAuthnService {
       // Si tenemos credentials específicos del usuario, agregarlos
       if (allowCredentials && allowCredentials.length > 0) {
         console.log('🔐 Usando credenciales específicas del usuario:', allowCredentials.length);
-        publicKeyOptions.allowCredentials = allowCredentials.map(cred => ({
-          id: Uint8Array.from(atob(cred.id.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)),
-          type: cred.type || 'public-key'
-        }));
+        authOptions.allowCredentials = allowCredentials;
       }
       
-      const assertion = await navigator.credentials.get({
-        publicKey: publicKeyOptions
-      });
+      // Usar startAuthentication que maneja base64url automáticamente
+      const assertion = await startAuthentication(authOptions);
       
       console.log('✅ Assertion obtenida:', assertion);
 
