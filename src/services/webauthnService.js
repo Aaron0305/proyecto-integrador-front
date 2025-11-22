@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { 
+import {
   browserSupportsWebAuthn,
   startRegistration,
   startAuthentication
@@ -9,7 +9,41 @@ import API_CONFIG from '../config/api';
 const API_BASE = API_CONFIG.baseURL;
 
 export class WebAuthnService {
-  
+
+  /**
+   * Helper para asegurar formato base64url desde String o ArrayBuffer
+   * Maneja la discrepancia entre versiones de simplewebauthn que devuelven JSON vs objetos nativos
+   */
+  static _toBase64Url(input) {
+    if (!input) return '';
+
+    // Si ya es string, asumir que es base64 o base64url y normalizar
+    if (typeof input === 'string') {
+      return input.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    }
+
+    // Si es ArrayBuffer o Uint8Array
+    if (input instanceof ArrayBuffer || input instanceof Uint8Array) {
+      const bytes = new Uint8Array(input);
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary)
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
+    }
+
+    // Fallback seguro
+    try {
+      return String(input);
+    } catch (e) {
+      console.error('Error convirtiendo a base64url:', e);
+      return '';
+    }
+  }
+
   /**
    * Verificar si el navegador soporta WebAuthn
    */
@@ -25,13 +59,13 @@ export class WebAuthnService {
       if (!browserSupportsWebAuthn()) {
         return false;
       }
-      
+
       // Verificar si PublicKeyCredential está disponible
-      if (typeof PublicKeyCredential !== 'undefined' && 
-          PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
+      if (typeof PublicKeyCredential !== 'undefined' &&
+        PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
         return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
       }
-      
+
       return false;
     } catch (error) {
       console.error('Error verificando autenticador:', error);
@@ -61,44 +95,40 @@ export class WebAuthnService {
       }, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      
+
       const { options } = optionsResponse.data;
       console.log('✅ Opciones obtenidas para registro');
 
       // Paso 2: Crear credencial biométrica usando SimpleWebAuthn
       console.log('👆 Solicitando huella digital...');
-      
+
       // Usar startRegistration que maneja base64url automáticamente
       const credential = await startRegistration(options);
-      
-      console.log('✅ Credencial creada:', credential);
 
-      // Paso 3: Enviar credencial al servidor
-      console.log('📤 Enviando credencial al servidor...');
-      console.log('🔑 Raw Credential ID:', credential.id);
-      console.log('🔑 Raw ID length:', credential.rawId.byteLength);
-      
-      // Convertir rawId a base64url para consistencia
-      const credentialIdBase64url = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)))
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=/g, '');
-      
+      console.log('✅ Credencial creada (raw):', credential);
+
+      // Procesar datos asegurando formato correcto (base64url)
+      // startRegistration puede devolver JSON (strings) o objetos nativos (ArrayBuffers)
+      const credentialIdBase64url = this._toBase64Url(credential.rawId || credential.id);
+      const attestationObjectBase64url = this._toBase64Url(credential.response.attestationObject);
+      const clientDataJSONBase64url = this._toBase64Url(credential.response.clientDataJSON);
+
       console.log('🔑 Credential ID base64url:', credentialIdBase64url);
-      
+
       // Preparar datos para SimpleWebAuthn verificación
       const registrationData = {
         response: {
-          id: credential.id,
-          rawId: credential.id,
+          id: credentialIdBase64url,
+          rawId: credentialIdBase64url,
           response: {
-            attestationObject: btoa(String.fromCharCode(...new Uint8Array(credential.response.attestationObject))),
-            clientDataJSON: btoa(String.fromCharCode(...new Uint8Array(credential.response.clientDataJSON)))
+            attestationObject: attestationObjectBase64url,
+            clientDataJSON: clientDataJSONBase64url
           },
-          type: credential.type
+          type: credential.type,
+          clientExtensionResults: credential.clientExtensionResults || {}
         }
       };
-      
+
       const verificationResponse = await axios.post(
         `${API_BASE}/auth/biometric/register`,
         registrationData,
@@ -118,7 +148,7 @@ export class WebAuthnService {
 
     } catch (error) {
       console.error('❌ Error en registro biométrico:', error);
-      
+
       // Manejar errores específicos de WebAuthn
       if (error.name === 'NotAllowedError') {
         throw new Error('Acceso denegado. Es posible que hayas cancelado la operación o el dispositivo esté bloqueado.');
@@ -150,7 +180,7 @@ export class WebAuthnService {
       // Paso 1: Obtener challenge para login (específico del usuario si es posible)
       console.log('🔑 Obteniendo challenge para autenticación...');
       let challengeResponse;
-      
+
       if (userEmail) {
         // Si tenemos email, usar el endpoint específico del usuario
         console.log('📧 Usando challenge específico para:', userEmail);
@@ -160,52 +190,53 @@ export class WebAuthnService {
         console.log('🌐 Usando challenge general (sin email específico)');
         challengeResponse = await axios.post(`${API_BASE}/auth/biometric/quick-login`);
       }
-      
+
       const { challenge, timeout, allowCredentials } = challengeResponse.data;
       console.log('✅ Challenge obtenido:', challenge);
 
       // Paso 2: Solicitar autenticación biométrica al usuario
       console.log('👆 Solicitando verificación biométrica...');
-      
+
       // Preparar opciones para startAuthentication
       const authOptions = {
         challenge,
         timeout: timeout || 60000,
         userVerification: "required"
       };
-      
+
       // Si tenemos credentials específicos del usuario, agregarlos
       if (allowCredentials && allowCredentials.length > 0) {
         console.log('🔐 Usando credenciales específicas del usuario:', allowCredentials.length);
         authOptions.allowCredentials = allowCredentials;
       }
-      
+
       // Usar startAuthentication que maneja base64url automáticamente
       const assertion = await startAuthentication(authOptions);
-      
-      console.log('✅ Assertion obtenida:', assertion);
 
-      // Paso 3: Enviar firma al servidor
-      console.log('📤 Verificando credencial...');
-      console.log('🔑 Assertion ID:', assertion.id);
-      console.log('🔑 Assertion rawId length:', assertion.rawId.byteLength);
-      
-      // Convertir rawId a base64url para consistencia
-      const credentialIdBase64url = btoa(String.fromCharCode(...new Uint8Array(assertion.rawId)))
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=/g, '');
-      
+      console.log('✅ Assertion obtenida (raw):', assertion);
+
+      // Procesar datos asegurando formato correcto (base64url)
+      const credentialIdBase64url = this._toBase64Url(assertion.rawId || assertion.id);
+      const signatureBase64url = this._toBase64Url(assertion.response.signature);
+      const authenticatorDataBase64url = this._toBase64Url(assertion.response.authenticatorData);
+      const clientDataJSONBase64url = this._toBase64Url(assertion.response.clientDataJSON);
+      const userHandleBase64url = assertion.response.userHandle ? this._toBase64Url(assertion.response.userHandle) : undefined;
+
       console.log('🔑 Credential ID base64url para auth:', credentialIdBase64url);
-      
+
       const authData = {
-        signature: btoa(String.fromCharCode(...new Uint8Array(assertion.response.signature))),
-        credentialId: credentialIdBase64url, // Usar el formato base64url consistente
+        signature: signatureBase64url,
+        credentialId: credentialIdBase64url,
         challenge: challenge,
-        authenticatorData: btoa(String.fromCharCode(...new Uint8Array(assertion.response.authenticatorData))),
-        clientDataJSON: btoa(String.fromCharCode(...new Uint8Array(assertion.response.clientDataJSON)))
+        authenticatorData: authenticatorDataBase64url,
+        clientDataJSON: clientDataJSONBase64url,
+        userHandle: userHandleBase64url,
+        rawId: credentialIdBase64url,
+        id: credentialIdBase64url,
+        type: assertion.type,
+        clientExtensionResults: assertion.clientExtensionResults || {}
       };
-      
+
       const authResponse = await axios.put(`${API_BASE}/auth/biometric/quick-login`, authData);
 
       if (!authResponse.data.success) {
@@ -213,7 +244,7 @@ export class WebAuthnService {
       }
 
       console.log('🎉 Autenticación biométrica exitosa');
-      
+
       // Guardar token y usuario (igual que login normal)
       const { token, user } = authResponse.data;
       localStorage.setItem('token', token);
@@ -229,7 +260,7 @@ export class WebAuthnService {
 
     } catch (error) {
       console.error('❌ Error en autenticación biométrica:', error);
-      
+
       // Manejar errores específicos de WebAuthn
       if (error.name === 'NotAllowedError') {
         throw new Error('Acceso denegado. Es posible que hayas cancelado la operación.');
@@ -280,7 +311,7 @@ export class WebAuthnService {
         throw new Error('No autenticado');
       }
 
-      const response = await axios.post(`${API_BASE}/auth/biometric/toggle`, 
+      const response = await axios.post(`${API_BASE}/auth/biometric/toggle`,
         { enable },
         { headers: { Authorization: `Bearer ${token}` } }
       );
