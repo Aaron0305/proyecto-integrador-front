@@ -497,6 +497,7 @@ export default function Login() {
           open={showBiometricDialog}
           onClose={() => setShowBiometricDialog(false)}
           email={email}
+          autoStart={true}
         />
       </Container>
     </ThemeProvider>

@@ -13,24 +13,22 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField,
   useTheme
 } from '@mui/material';
 import {
   Fingerprint,
   Security,
-  Smartphone,
   Warning
 } from '@mui/icons-material';
 
-const BiometricLogin = ({ email, onClose, onSuccess }) => {
+const BiometricLogin = ({ email, onClose, onSuccess, autoStart = false }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isSupported, setIsSupported] = useState(false);
-  const [hasDevices, setHasDevices] = useState(false);
   const [checkingSupport, setCheckingSupport] = useState(true);
-  
-  const { loginWithBiometric, isBiometricSupported, checkBiometricAvailable, userHasBiometricDevices } = useContext(AuthContext);
+  const [autoStarted, setAutoStarted] = useState(false);
+
+  const { loginWithBiometric, isBiometricSupported } = useContext(AuthContext);
   const navigate = useNavigate();
   const theme = useTheme();
 
@@ -38,21 +36,13 @@ const BiometricLogin = ({ email, onClose, onSuccess }) => {
     const checkBiometricSupport = async () => {
       try {
         setCheckingSupport(true);
-        
+
         // Verificar si el navegador soporta WebAuthn
         const supported = isBiometricSupported();
         setIsSupported(supported);
-        
-        if (supported && email) {
-          // Verificar si el usuario tiene dispositivos registrados
-          const userHasDevices = await userHasBiometricDevices(email);
-          setHasDevices(userHasDevices);
-          
-          // Verificar si hay autenticadores disponibles en el dispositivo
-          const hasAuth = await checkBiometricAvailable();
-          if (!hasAuth && !userHasDevices) {
-            setError('Tu dispositivo no tiene sensores biométricos disponibles');
-          }
+
+        if (!supported) {
+          setError('Tu navegador no soporta autenticación biométrica');
         }
       } catch (error) {
         console.error('Error verificando soporte biométrico:', error);
@@ -63,7 +53,15 @@ const BiometricLogin = ({ email, onClose, onSuccess }) => {
     };
 
     checkBiometricSupport();
-  }, [email, isBiometricSupported, checkBiometricAvailable, userHasBiometricDevices]);
+  }, [isBiometricSupported]);
+
+  // Auto-iniciar autenticación biométrica si autoStart es true
+  useEffect(() => {
+    if (autoStart && isSupported && !checkingSupport && !autoStarted && !loading) {
+      setAutoStarted(true);
+      handleBiometricLogin();
+    }
+  }, [autoStart, isSupported, checkingSupport, autoStarted, loading]);
 
   const handleBiometricLogin = async () => {
     setLoading(true);
@@ -71,7 +69,7 @@ const BiometricLogin = ({ email, onClose, onSuccess }) => {
 
     try {
       const result = await loginWithBiometric();
-      
+
       if (result.success) {
         onSuccess && onSuccess(result);
         setTimeout(() => {
@@ -115,24 +113,6 @@ const BiometricLogin = ({ email, onClose, onSuccess }) => {
     );
   }
 
-  if (!hasDevices) {
-    return (
-      <Alert severity="info" sx={{ mb: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Smartphone />
-          <Box>
-            <Typography variant="body2">
-              No tienes dispositivos biométricos registrados
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              Inicia sesión normalmente y ve a tu perfil para configurar la autenticación biométrica
-            </Typography>
-          </Box>
-        </Box>
-      </Alert>
-    );
-  }
-
   return (
     <Box sx={{ textAlign: 'center' }}>
       {error && (
@@ -145,8 +125,8 @@ const BiometricLogin = ({ email, onClose, onSuccess }) => {
 
       <Box sx={{ mb: 3 }}>
         <Zoom in={true} timeout={800}>
-          <Box 
-            sx={{ 
+          <Box
+            sx={{
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -167,44 +147,55 @@ const BiometricLogin = ({ email, onClose, onSuccess }) => {
         <Typography variant="h6" gutterBottom>
           Autenticación Biométrica
         </Typography>
-        
+
         <Typography variant="body2" color="text.secondary" paragraph>
-          Usa tu huella digital, Face ID o PIN para acceder de forma segura
+          {loading ? 'Coloca tu huella digital para continuar...' : 'Usa tu huella digital, Face ID o PIN para acceder de forma segura'}
         </Typography>
       </Box>
 
-      <Button
-        variant="contained"
-        size="large"
-        fullWidth
-        onClick={handleBiometricLogin}
-        disabled={loading}
-        startIcon={loading ? <CircularProgress size={20} /> : <Security />}
-        sx={{
-          py: 1.5,
-          borderRadius: 2,
-          background: `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.secondary.main} 90%)`,
-          '&:hover': {
-            background: `linear-gradient(45deg, ${theme.palette.primary.dark} 30%, ${theme.palette.secondary.dark} 90%)`,
-            transform: 'translateY(-1px)',
-            boxShadow: theme.shadows[6]
-          },
-          '&:disabled': {
-            background: theme.palette.action.disabledBackground
-          }
-        }}
-      >
-        {loading ? 'Verificando...' : 'Iniciar con Biométrico'}
-      </Button>
+      {!loading && (
+        <Button
+          variant="contained"
+          size="large"
+          fullWidth
+          onClick={handleBiometricLogin}
+          disabled={loading}
+          startIcon={<Security />}
+          sx={{
+            py: 1.5,
+            borderRadius: 2,
+            background: `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.secondary.main} 90%)`,
+            '&:hover': {
+              background: `linear-gradient(45deg, ${theme.palette.primary.dark} 30%, ${theme.palette.secondary.dark} 90%)`,
+              transform: 'translateY(-1px)',
+              boxShadow: theme.shadows[6]
+            },
+            '&:disabled': {
+              background: theme.palette.action.disabledBackground
+            }
+          }}
+        >
+          Iniciar con Biométrico
+        </Button>
+      )}
 
-      {onClose && (
+      {loading && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 2 }}>
+          <CircularProgress size={24} />
+          <Typography variant="body2" color="text.secondary">
+            Esperando autenticación...
+          </Typography>
+        </Box>
+      )}
+
+      {onClose && !loading && (
         <Button
           variant="text"
           size="small"
           onClick={onClose}
-          sx={{ mt: 1, color: theme.palette.text.secondary }}
+          sx={{ mt: 2, color: theme.palette.text.secondary }}
         >
-          Cancelar
+          Usar contraseña en su lugar
         </Button>
       )}
     </Box>
@@ -212,9 +203,9 @@ const BiometricLogin = ({ email, onClose, onSuccess }) => {
 };
 
 // Componente Dialog para usar en el login normal
-export const BiometricLoginDialog = ({ open, onClose, email }) => {
+export const BiometricLoginDialog = ({ open, onClose, email, autoStart = true }) => {
   const [success, setSuccess] = useState(false);
-  
+
   const handleSuccess = () => {
     setSuccess(true);
     setTimeout(() => {
@@ -223,10 +214,10 @@ export const BiometricLoginDialog = ({ open, onClose, email }) => {
   };
 
   return (
-    <Dialog 
-      open={open} 
+    <Dialog
+      open={open}
       onClose={onClose}
-      maxWidth="sm" 
+      maxWidth="sm"
       fullWidth
       PaperProps={{
         sx: {
@@ -245,7 +236,7 @@ export const BiometricLoginDialog = ({ open, onClose, email }) => {
           'Acceso Biométrico'
         )}
       </DialogTitle>
-      
+
       <DialogContent sx={{ px: 3, pb: 2 }}>
         {success ? (
           <Box sx={{ textAlign: 'center' }}>
@@ -255,14 +246,15 @@ export const BiometricLoginDialog = ({ open, onClose, email }) => {
             <CircularProgress size={24} sx={{ mt: 2 }} />
           </Box>
         ) : (
-          <BiometricLogin 
-            email={email} 
+          <BiometricLogin
+            email={email}
             onClose={onClose}
             onSuccess={handleSuccess}
+            autoStart={autoStart}
           />
         )}
       </DialogContent>
-      
+
       {!success && (
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Typography variant="caption" color="text.secondary" sx={{ flexGrow: 1 }}>
