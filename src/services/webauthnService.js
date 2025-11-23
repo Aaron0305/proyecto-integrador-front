@@ -147,17 +147,32 @@ export class WebAuthnService {
         hasId: !!credential.id,
         type: credential.type,
         idType: typeof credential.id,
-        rawIdType: typeof credential.rawId
+        rawIdType: typeof credential.rawId,
+        responseType: typeof credential.response,
+        attestationObjectType: typeof credential.response?.attestationObject,
+        clientDataJSONType: typeof credential.response?.clientDataJSON
       });
 
       // Procesar datos asegurando formato correcto (base64url)
       // SimpleWebAuthn v6+ ya devuelve en base64url
       if (!credential || !credential.response) {
+        console.error('❌ Credencial incompleta:', credential);
         throw new Error('Respuesta de credencial inválida del navegador');
+      }
+
+      // Validar que todos los campos necesarios existan
+      if (!credential.id || !credential.response.attestationObject || !credential.response.clientDataJSON) {
+        console.error('❌ Faltan campos en credential:', {
+          hasId: !!credential.id,
+          hasAttestationObject: !!credential.response.attestationObject,
+          hasClientDataJSON: !!credential.response.clientDataJSON
+        });
+        throw new Error('Campos faltantes en la respuesta de credencial');
       }
 
       // SimpleWebAuthn devuelve credential con response que ya está en base64url
       // Estructura: { id, rawId, response: { attestationObject, clientDataJSON }, type }
+      console.log('✅ Validación de credential exitosa');
       const registrationData = {
         response: credential  // SimpleWebAuthn ya proporciona el formato correcto
       };
