@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../../contexts/AuthContext';
-import WebAuthnService from '../../services/webauthnService';
+import BiometricSimpleService from '../../services/biometricSimpleService';
 import WebAuthnDiagnostic from './WebAuthnDiagnostic';
 import {
   Box,
@@ -79,11 +79,17 @@ const BiometricSettings = () => {
   const [showDiagnostic, setShowDiagnostic] = useState(false);
   const [selectedAuthType, setSelectedAuthType] = useState('both');
 
-  const {
-    registerBiometricDevice,
-    isBiometricSupported,
-    checkBiometricAvailable
-  } = useContext(AuthContext);
+  const isBiometricSupported = () => {
+    return BiometricSimpleService.isSupported();
+  };
+
+  const checkBiometricAvailable = async () => {
+    try {
+      return await BiometricSimpleService.hasRegisteredBiometric();
+    } catch {
+      return false;
+    }
+  };
 
   const theme = useTheme();
 
@@ -115,12 +121,11 @@ const BiometricSettings = () => {
 
   const loadBiometricStatus = async () => {
     try {
-      const status = await WebAuthnService.getBiometricStatus();
+      const status = await BiometricSimpleService.getBiometricStatus();
       setBiometricStatus(status);
       setIsEnabled(status.enabled);
     } catch (error) {
       console.error('Error cargando estado biométrico:', error);
-      // Si hay error, asumir que no está registrado
       setBiometricStatus({ enabled: false, registeredAt: null });
       setIsEnabled(false);
     }
@@ -146,12 +151,12 @@ const BiometricSettings = () => {
     setRegistrationStep(0);
 
     try {
-      // Capturar la huella directamente y registrarla
-      const result = await registerBiometricDevice();
+      // Activar huella - sin guardar nada en BD
+      const result = await BiometricSimpleService.activateBiometric();
       if (result.success) {
-        setRegistrationStep(1); // Marcar como guardado
+        setRegistrationStep(1);
         setTimeout(() => {
-          setSuccess('¡Huella registrada correctamente! Ya puedes usar inicio biométrico.');
+          setSuccess(result.message);
           setShowRegistrationDialog(false);
           loadBiometricStatus();
           setCurrentSampleAttempting(false);
@@ -159,13 +164,7 @@ const BiometricSettings = () => {
         }, 1500);
       }
     } catch (error) {
-      if (error.name === 'NotAllowedError') {
-        setError('Acceso biométrico denegado. Asegúrate de permitir el acceso.');
-      } else if (error.message?.includes('replace')) {
-        setError('Error al procesar la huella. Intenta de nuevo.');
-      } else {
-        setError(error.message || 'Error al capturar huella. Intenta de nuevo.');
-      }
+      setError(error.message || 'Error al activar huella');
       setCurrentSampleAttempting(false);
     }
   };
@@ -184,15 +183,25 @@ const BiometricSettings = () => {
     setSuccess('');
 
     try {
-      const result = await WebAuthnService.toggleBiometric(enable);
-      if (result.success) {
-        setSuccess(result.message);
-        setIsEnabled(enable);
-        setBiometricStatus(prev => ({ ...prev, enabled: enable }));
+      if (enable) {
+        // Activar
+        const result = await BiometricSimpleService.activateBiometric();
+        if (result.success) {
+          setSuccess(result.message);
+          setIsEnabled(true);
+          setBiometricStatus(prev => ({ ...prev, enabled: true }));
+        }
+      } else {
+        // Desactivar
+        const result = await BiometricSimpleService.deactivateBiometric();
+        if (result.success) {
+          setSuccess(result.message);
+          setIsEnabled(false);
+          setBiometricStatus(prev => ({ ...prev, enabled: false }));
+        }
       }
     } catch (error) {
       setError(error.message || 'Error al cambiar estado de la huella');
-      // Revertir el switch
       setIsEnabled(!enable);
     } finally {
       setOperating(false);
@@ -205,15 +214,15 @@ const BiometricSettings = () => {
     setSuccess('');
 
     try {
-      const result = await WebAuthnService.deleteBiometric();
+      const result = await BiometricSimpleService.deactivateBiometric();
       if (result.success) {
-        setSuccess('Huella eliminada permanentemente. Deberás registrarla de nuevo si deseas usarla.');
+        setSuccess('Huella desactivada. Deberás activarla de nuevo para usarla.');
         setBiometricStatus({ enabled: false, registeredAt: null });
         setIsEnabled(false);
         setShowDeleteDialog(false);
       }
     } catch (error) {
-      setError(error.message || 'Error al eliminar huella');
+      setError(error.message || 'Error al desactivar huella');
     } finally {
       setOperating(false);
     }
