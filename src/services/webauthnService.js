@@ -115,8 +115,23 @@ export class WebAuthnService {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
+      console.log('📦 Respuesta recibida del servidor:', optionsResponse.data);
+      
+      if (!optionsResponse.data.success) {
+        throw new Error(optionsResponse.data.message || 'Error del servidor');
+      }
+
       const { options } = optionsResponse.data;
-      console.log('✅ Opciones obtenidas para registro');
+      
+      if (!options) {
+        throw new Error('Servidor no devolvió opciones de registro');
+      }
+
+      console.log('✅ Opciones obtenidas para registro:', {
+        hasChallenge: !!options.challenge,
+        hasRp: !!options.rp,
+        hasUser: !!options.user
+      });
 
       // Paso 2: Crear credencial biométrica usando SimpleWebAuthn
       console.log('👆 Solicitando huella digital...');

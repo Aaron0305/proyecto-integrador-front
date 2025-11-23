@@ -126,11 +126,9 @@ const BiometricSettings = () => {
     }
   };
 
-  const REQUIRED_SAMPLES = 3; // Número de muestras requeridas
+  const REQUIRED_SAMPLES = 1; // Solo 1 captura
   const sampleSteps = [
-    'Primera muestra - Posición normal',
-    'Segunda muestra - Ángulo diferente', 
-    'Tercera muestra - Otra parte del dedo',
+    'Capturando huella digital...',
     'Guardando en el servidor...'
   ];
 
@@ -145,79 +143,29 @@ const BiometricSettings = () => {
   const captureBiometricSample = async () => {
     setCurrentSampleAttempting(true);
     setError('');
+    setRegistrationStep(0);
 
     try {
-      // Solo capturar localmente las muestras biométricas, NO enviar al servidor aún
-      const credential = await navigator.credentials.create({
-        publicKey: {
-          challenge: new Uint8Array(32), // Challenge temporal para la captura local
-          rp: {
-            name: 'Sistema de Seguimiento de Docentes',
-            id: RP_ID
-          },
-          user: {
-            id: new TextEncoder().encode('temp_user_id'),
-            name: 'temp@temp.com',
-            displayName: 'Temp User'
-          },
-          pubKeyCredParams: [
-            { alg: -7, type: 'public-key' },
-            { alg: -257, type: 'public-key' }
-          ],
-          authenticatorSelection: {
-            authenticatorAttachment: 'platform',
-            userVerification: 'required',
-            residentKey: 'preferred'
-          },
-          timeout: 60000
-        }
-      });
-
-      if (credential) {
-        // Agregar muestra exitosa (solo local)
-        const newSamples = [...registrationSamples, {
-          timestamp: Date.now(),
-          credentialId: credential.id,
-          sampleNumber: registrationSamples.length + 1
-        }];
-        setRegistrationSamples(newSamples);
-        
-        if (newSamples.length >= REQUIRED_SAMPLES) {
-          // Ahora SÍ registrar en el servidor usando la última captura exitosa
-          setRegistrationStep(REQUIRED_SAMPLES);
-          await registerFinalBiometric();
-        } else {
-          // Continuar con siguiente muestra
-          setRegistrationStep(newSamples.length);
-          setTimeout(() => {
-            setCurrentSampleAttempting(false);
-          }, 1000);
-        }
-      }
-    } catch (error) {
-      if (error.name === 'NotAllowedError') {
-        setError('Acceso biométrico denegado. Asegúrate de permitir el acceso al sensor.');
-      } else {
-        setError(error.message || 'Error al capturar huella. Inténtalo de nuevo.');
-      }
-      setCurrentSampleAttempting(false);
-    }
-  };
-
-  const registerFinalBiometric = async () => {
-    try {
-      // Realizar el registro real con el servidor
+      // Capturar la huella directamente y registrarla
       const result = await registerBiometricDevice();
       if (result.success) {
+        setRegistrationStep(1); // Marcar como guardado
         setTimeout(() => {
-          setSuccess(`¡Registro completado! Se capturaron ${REQUIRED_SAMPLES} muestras de tu huella para mayor seguridad.`);
+          setSuccess('¡Huella registrada correctamente! Ya puedes usar inicio biométrico.');
           setShowRegistrationDialog(false);
           loadBiometricStatus();
           setCurrentSampleAttempting(false);
+          setRegistrationSamples([{ success: true }]);
         }, 1500);
       }
     } catch (error) {
-      setError(error.message || 'Error al finalizar el registro. Inténtalo de nuevo.');
+      if (error.name === 'NotAllowedError') {
+        setError('Acceso biométrico denegado. Asegúrate de permitir el acceso.');
+      } else if (error.message?.includes('replace')) {
+        setError('Error al procesar la huella. Intenta de nuevo.');
+      } else {
+        setError(error.message || 'Error al capturar huella. Intenta de nuevo.');
+      }
       setCurrentSampleAttempting(false);
     }
   };
