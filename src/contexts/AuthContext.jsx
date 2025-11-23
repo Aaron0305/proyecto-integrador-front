@@ -219,10 +219,27 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  /**
+   * NUEVO: Login con verificación de huella del dispositivo (sin registro previo)
+   * Verifica la huella del dispositivo y luego permite login con email/password
+   */
+  const loginWithDeviceBiometric = async (email, password) => {
+    const result = await WebAuthnService.verifyDeviceBiometricAndLogin(email, password);
+    
+    if (result.success) {
+      setCurrentUser(result.user);
+      setRetryCount(0);
+      return result;
+    }
+    
+    throw new Error('Error en la autenticación biométrica del dispositivo');
+  };
+
   return (
     <AuthContext.Provider 
       value={{ 
         currentUser, 
+        setCurrentUser, // Exponer setCurrentUser para uso en componentes
         login, 
         register, 
         logout,
@@ -233,6 +250,7 @@ export const AuthProvider = ({ children }) => {
         verifyToken, // Exponemos la función de verificación
         // Funciones WebAuthn/Biométricas
         loginWithBiometric,
+        loginWithDeviceBiometric, // Nuevo método
         registerBiometricDevice,
         getBiometricDevices,
         removeBiometricDevice,

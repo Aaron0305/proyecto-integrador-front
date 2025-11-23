@@ -29,7 +29,7 @@ import {
 } from '@mui/icons-material';
 import { theme } from '../../theme/palette';
 import ForgotPasswordLink from './ForgotPasswordLink';
-import { BiometricLoginDialog } from './BiometricLogin';
+import { DeviceBiometricLoginDialog } from './DeviceBiometricLogin';
 
 // Componente de campo de entrada animado
 const AnimatedTextField = ({ label, type, value, onChange, icon, endAdornment, ...props }) => {
@@ -90,11 +90,10 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [showBiometricDialog, setShowBiometricDialog] = useState(false);
   const [biometricSupported, setBiometricSupported] = useState(false);
-  const [userHasBiometric, setUserHasBiometric] = useState(false);
   const [biometricAttempted, setBiometricAttempted] = useState(false);
 
   // Obtenemos currentUser del contexto para verificar si ya hay una sesión activa
-  const { login, currentUser, isBiometricSupported, userHasBiometricDevices } = useContext(AuthContext);
+  const { login, currentUser, isBiometricSupported } = useContext(AuthContext);
   const navigate = useNavigate();
 
   // Redirigir si ya hay una sesión activa
@@ -123,24 +122,8 @@ export default function Login() {
     checkAndShowBiometric();
   }, [isBiometricSupported, biometricAttempted]);
 
-  // Verificar si el usuario tiene dispositivos biométricos cuando ingresa email
-  useEffect(() => {
-    const checkUserBiometric = async () => {
-      if (email && email.includes('@')) {
-        try {
-          const hasBiometric = await userHasBiometricDevices(email);
-          setUserHasBiometric(hasBiometric);
-        } catch (error) {
-          setUserHasBiometric(false);
-        }
-      } else {
-        setUserHasBiometric(false);
-      }
-    };
-
-    const timeoutId = setTimeout(checkUserBiometric, 500); // Debounce
-    return () => clearTimeout(timeoutId);
-  }, [email, userHasBiometricDevices]);
+  // Ya no verificamos si el usuario tiene dispositivos biométricos
+  // La verificación de huella es independiente y usa las huellas del dispositivo
 
   const handleShowPassword = () => {
     setShowPassword(!showPassword);
@@ -385,8 +368,8 @@ export default function Login() {
                 </Button>
               </Zoom>
 
-              {/* Opción de login biométrico */}
-              {biometricSupported && userHasBiometric && (
+              {/* Opción de verificación de huella del dispositivo - siempre disponible si el navegador soporta biométrica */}
+              {biometricSupported && email && email.includes('@') && (
                 <Fade in={true} style={{ transitionDelay: '800ms' }}>
                   <Box sx={{ mt: 2 }}>
                     <Divider sx={{ mb: 2 }}>
@@ -428,14 +411,14 @@ export default function Login() {
                         }
                       }}
                     >
-                      Acceso Biométrico
+                      Verificar Huella del Dispositivo
                     </Button>
                   </Box>
                 </Fade>
               )}
 
-              {/* Mostrar aviso si el navegador soporta biométrico pero el usuario no lo ha configurado */}
-              {biometricSupported && !userHasBiometric && email && email.includes('@') && (
+              {/* Mostrar aviso informativo sobre la verificación de huella */}
+              {biometricSupported && email && email.includes('@') && (
                 <Fade in={true} style={{ transitionDelay: '900ms' }}>
                   <Alert
                     severity="info"
@@ -449,7 +432,7 @@ export default function Login() {
                       }
                     }}
                   >
-                    💡 Después de iniciar sesión puedes configurar acceso biométrico en tu perfil
+                    💡 Usa la huella registrada en tu dispositivo (Windows Hello, Touch ID, Face ID) para verificar tu identidad
                   </Alert>
                 </Fade>
               )}
@@ -492,8 +475,8 @@ export default function Login() {
           </Paper>
         </Zoom>
 
-        {/* Dialog de login biométrico */}
-        <BiometricLoginDialog
+        {/* Dialog de verificación de huella del dispositivo */}
+        <DeviceBiometricLoginDialog
           open={showBiometricDialog}
           onClose={() => setShowBiometricDialog(false)}
           email={email}

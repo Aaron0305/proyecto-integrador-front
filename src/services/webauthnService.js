@@ -430,19 +430,149 @@ export class WebAuthnService {
 
   /**
    * Verificar si un usuario tiene dispositivos biométricos registrados
+   * NOTA: Ya no se usa porque la verificación de huella es independiente
+   * y usa las huellas del dispositivo directamente
    */
   static async userHasBiometricDevices(email) {
+    // Siempre retornar false porque no necesitamos verificar esto
+    // La verificación de huella usa las huellas del dispositivo directamente
+    return false;
+  }
+
+  /**
+   * NUEVO: Verificar SOLO la huella del dispositivo (SIN hacer login)
+   * Este es un proceso completamente independiente del login
+   * Solo verifica que el dispositivo tiene una huella válida registrada
+   * @param {string} email - Email del usuario (opcional, solo para logging)
+   */
+  static async verifyDeviceBiometric(email = null) {
+    if (!this.isSupported()) {
+      throw new Error('Este navegador no soporta autenticación biométrica');
+    }
+
     try {
-      // Usar la ruta de verificación de usuario existente o crear una nueva
-      const response = await axios.post(`${API_BASE}/auth/biometric/check-user-devices`, {
+      // Paso 1: Obtener challenge del servidor
+      console.log('🔑 Obteniendo challenge para verificación de dispositivo...');
+      const challengeResponse = await axios.post(`${API_BASE}/auth/biometric/verify-device`, {
         email
       });
 
-      console.log('🔍 Verificación dispositivos biométricos:', response.data);
-      return response.data.success && !!response.data.hasDevices;
+      if (!challengeResponse.data.success) {
+        throw new Error(challengeResponse.data.message || 'Error al obtener challenge');
+      }
+
+      const { challenge, timeout, rpId } = challengeResponse.data;
+      console.log('✅ Challenge obtenido para verificación de dispositivo');
+
+      // Paso 2: Solicitar verificación de huella al dispositivo usando API nativa
+      console.log('👆 Solicitando verificación de huella del dispositivo...');
+
+      // Asegurar que challenge es un string
+      const challengeString = typeof challenge === 'string' ? challenge : String(challenge);
+      
+      // Convertir challenge de base64url a ArrayBuffer (API nativa)
+      const base64UrlToArrayBuffer = (base64url) => {
+        const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        return bytes.buffer;
+      };
+
+      const challengeBuffer = base64UrlToArrayBuffer(challengeString);
+
+      // Usar API nativa de WebAuthn (más simple y directo)
+      const assertion = await navigator.credentials.get({
+        publicKey: {
+          challenge: challengeBuffer,
+          timeout: timeout || 60000,
+          userVerification: 'required',
+          rpId: rpId || window.location.hostname,
+          // No especificamos allowCredentials = permite cualquier credencial del dispositivo
+        }
+      });
+
+      if (!assertion) {
+        throw new Error('Verificación de huella cancelada');
+      }
+
+      console.log('✅ Huella del dispositivo verificada correctamente');
+
+      // Paso 3: Enviar respuesta al servidor SOLO para verificar la huella (SIN login)
+      console.log('📤 Enviando verificación de huella al servidor...');
+
+      // Convertir datos de ArrayBuffer a base64url
+      const arrayBufferToBase64Url = (buffer) => {
+        if (!buffer) return '';
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.byteLength; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        const base64 = btoa(binary);
+        return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+      };
+
+      const credentialIdBase64url = arrayBufferToBase64Url(assertion.rawId);
+      const signatureBase64url = arrayBufferToBase64Url(assertion.response.signature);
+      const authenticatorDataBase64url = arrayBufferToBase64Url(assertion.response.authenticatorData);
+      const clientDataJSONBase64url = arrayBufferToBase64Url(assertion.response.clientDataJSON);
+      const userHandleBase64url = assertion.response.userHandle ? arrayBufferToBase64Url(assertion.response.userHandle) : undefined;
+
+      const verifyData = {
+        challenge: challengeString, // Usar el string del challenge
+        assertion: {
+          id: credentialIdBase64url,
+          rawId: credentialIdBase64url,
+          type: assertion.type,
+          response: {
+            authenticatorData: authenticatorDataBase64url,
+            clientDataJSON: clientDataJSONBase64url,
+            signature: signatureBase64url,
+            userHandle: userHandleBase64url
+          },
+          clientExtensionResults: assertion.clientExtensionResults || {}
+        }
+      };
+
+      const verifyResponse = await axios.post(`${API_BASE}/auth/biometric/verify-device-response`, verifyData);
+
+      if (!verifyResponse.data.success) {
+        throw new Error(verifyResponse.data.message || 'Error en la verificación de huella');
+      }
+
+      console.log('🎉 Huella del dispositivo verificada correctamente');
+
+      // NO guardamos token ni usuario aquí - esto es solo verificación de huella
+      // El login se hace por separado con email y contraseña
+
+      return {
+        success: true,
+        message: verifyResponse.data.message || 'Huella del dispositivo verificada correctamente',
+        verified: true
+      };
+
     } catch (error) {
-      console.error('❌ Error verificando dispositivos biométricos:', error);
-      return false;
+      console.error('❌ Error en verificación de dispositivo biométrico:', error);
+
+      // Manejar errores específicos de WebAuthn
+      if (error.name === 'NotAllowedError') {
+        throw new Error('Acceso denegado. Es posible que hayas cancelado la verificación de huella.');
+      } else if (error.name === 'NotSupportedError') {
+        throw new Error('Tu dispositivo no soporta verificación biométrica.');
+      } else if (error.name === 'SecurityError') {
+        throw new Error('Error de seguridad. Verifica que estés usando HTTPS en producción.');
+      } else if (error.name === 'InvalidStateError') {
+        throw new Error('Estado inválido del autenticador.');
+      } else if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      } else if (error.message) {
+        throw new Error(error.message);
+      } else {
+        throw new Error('Error desconocido durante la verificación biométrica');
+      }
     }
   }
 
